@@ -8,6 +8,7 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.ClientAuthConfiguration;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -92,6 +93,8 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
 
             sb.disableServerHeader();
 
+            final Optional<ClientAuthConfiguration> clientAuthConfiguration = authenticationProvider.getClientAuthConfiguration();
+
             if (sourceConfig.isSsl()) {
                 logger.info("Creating {} source with SSL/TLS enabled.", sourceName);
                 final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -102,7 +105,18 @@ public abstract class BaseHttpSource<T extends Record<?>> implements Source<T> {
                         new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                         )
                 );
+                clientAuthConfiguration.ifPresent(clientAuthConfig -> {
+                    sb.tlsCustomizer(sslContextBuilder -> {
+                        sslContextBuilder.clientAuth(clientAuthConfig.getClientAuth());
+                        sslContextBuilder.trustManager(clientAuthConfig.getTrustManagerFactory());
+                    });
+                });
             } else {
+                if (clientAuthConfiguration.isPresent()) {
+                    throw new IllegalStateException(
+                            "mutual_tls authentication requires ssl: true. " +
+                            "Configure ssl: true with ssl_certificate_file and ssl_key_file.");
+                }
                 logger.warn("Creating {} source without SSL/TLS. This is not secure.", sourceName);
                 logger.warn("In order to set up TLS for the {} source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl", sourceName);
                 sb.http(sourceConfig.getPort());

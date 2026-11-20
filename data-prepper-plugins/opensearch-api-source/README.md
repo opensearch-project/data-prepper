@@ -19,10 +19,10 @@ source:
 
 ## Configurations
 
-* port (Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```9202```.
-* path (Optional) => A `string` which represents the URI path for endpoint invocation. It should start with `/` and length should be at least 1. Path can contain `${pipelineName}` placeholder which will be replaced with pipeline name. Default value is `/opensearch`.
-* health_check_service (Optional) => A `boolean` that determines if a `/health` endpoint on the defined port will be home to a health check. Default is `false`
-* unauthenticated_health_check (Optional) => A `boolean` that determines if the health endpoint will require authentication. This option is ignored if no authentication is defined. Default is `false`
+* port (Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```9200```.
+* path (Optional) => A `string` which represents the URI path for endpoint invocation. It should start with `/` and length should be at least 1. Path can contain `${pipelineName}` placeholder which will be replaced with pipeline name. Default value is `/`.
+* health_check_service (Optional) => A `boolean`. The option is accepted but currently has no effect: the `opensearch_api` source does not serve a health check endpoint (neither `/health` nor `/`).
+* unauthenticated_health_check (Optional) => A `boolean`. The option is accepted but currently has no effect, because there is no health check endpoint on this source.
 * request_timeout (Optional) => An `int` larger than 0 represents request timeout in millis. Default is ```10_000```. 
 * thread_count (Optional) => An `int` larger than 0 represents the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count (Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
@@ -59,6 +59,58 @@ source:
 This plugin uses pluggable authentication for HTTP servers. To provide custom authentication,
 create a plugin which implements [`ArmeriaHttpAuthenticationProvider`](../armeria-common/src/main/java/org/opensearch/dataprepper/armeria/authentication/ArmeriaHttpAuthenticationProvider.java)
 
+#### Mutual TLS (mTLS) Authentication
+
+**Status: Experimental**
+
+The `mutual_tls` authentication plugin requires connecting clients to present a TLS client certificate signed by a trusted Certificate Authority (CA).
+
+Supported sources: `http` and `opensearch_api`. The OTLP sources (`otlp`, `otlp_traces`, `otlp_metrics`, `otlp_logs`) do not support `mutual_tls`, and a pipeline that configures it on one of them fails to start.
+
+Requirements:
+
+* `ssl: true` on the source, with `ssl_certificate_file` and `ssl_key_file`. A pipeline that configures `mutual_tls` without `ssl: true` fails validation with `ssl must be true when mutual_tls authentication is used`.
+* Experimental plugins must be enabled in `data-prepper-config.yaml`. Use `enable_all`; `enabled_plugins` cannot be used for authentication plugins because they have no plugin type name.
+
+```yaml
+experimental:
+  enable_all: true
+```
+
+Pipeline configuration:
+
+```yaml
+source:
+  opensearch_api:
+    ssl: true
+    ssl_certificate_file: "/path/to/server.crt"
+    ssl_key_file: "/path/to/server.key"
+    authentication:
+      mutual_tls:
+        ssl_trust_certificate_file: "/path/to/ca.crt"
+```
+
+Configuration options:
+
+* `ssl_trust_certificate_file` (Required): Path to a file containing one or more trusted CA certificates used to verify client certificates. It must be a readable regular file with at least one certificate, otherwise the source fails to start.
+  * Tested formats: PEM with one certificate, PEM with several certificates concatenated, and DER with a single certificate.
+  * Other formats accepted by the Java `CertificateFactory` (such as PKCS#7) may work but are not tested.
+
+Client behavior:
+
+| Client request | Result |
+|----------------|--------|
+| Certificate signed by a trusted CA | Request is processed normally |
+| No client certificate | `401 Unauthorized` |
+| Certificate not signed by a trusted CA | TLS handshake fails, no HTTP response |
+
+Health check: the `opensearch_api` source does not currently serve a health check endpoint, so `health_check_service` and `unauthenticated_health_check` have no effect on it.
+
+Limitations:
+
+* Only file paths are supported (inline PEM content is not supported in this version).
+* CRL/OCSP revocation checking is not yet supported. See [#6940](https://github.com/opensearch-project/data-prepper/issues/6940).
+* Handshake rejection logging/metrics are not yet available. See [#6942](https://github.com/opensearch-project/data-prepper/issues/6942).
 
 ### SSL
 
@@ -96,20 +148,20 @@ Make sure to replace the paths for the `ssl_certificate_file` and `ssl_key_file`
 ```
 curl -k -XPOST -H "Content-Type: application/json" -d '{ "index": { "_index": "movies", "_id": "tt1979320" } }
 { "title": "Rush", "year": 2013}' 
-http://localhost:9202/opensearch/_bulk
+https://localhost:9200/_bulk
 ```
 
 - Alternatively, use the following command to set the index `index = movies` in the path 
 ```
 curl -k -XPOST -H "Content-Type: application/json" -d '{ "index": { "_index": "movies", "_id": "tt1979320" } }
 { "title": "Rush", "year": 2013}' 
-http://localhost:9202/opensearch/movies/_bulk
+https://localhost:9200/movies/_bulk
 ```
 
 # Metrics
 
 ### Counter
-- `requestsReceived`: measures total number of requests received by `/opensearch` endpoint.
+- `requestsReceived`: measures total number of requests received by the bulk endpoints (`/_bulk` and `/{index}/_bulk`).
 - `requestsRejected`: measures total number of requests rejected (429 response status code) by OpenSearch API source plugin.
 - `successRequests`: measures total number of requests successfully processed (200 response status code) by OpenSearch API source plugin.
 - `badRequests`: measures total number of requests with invalid content type or format processed by OpenSearch API source plugin (400 response status code).

@@ -173,6 +173,14 @@ public class BaseHttpServerConfig implements HttpServerConfig {
         return true;
     }
 
+    @AssertTrue(message = "ssl must be true when mutual_tls authentication is used")
+    boolean isSslEnabledForMutualTls() {
+        if (authentication == null || !"mutual_tls".equals(authentication.getPluginName())) {
+            return true;
+        }
+        return ssl;
+    }
+
     @Override
     public int getRequestTimeoutInMillis() {
         return requestTimeoutInMillis;

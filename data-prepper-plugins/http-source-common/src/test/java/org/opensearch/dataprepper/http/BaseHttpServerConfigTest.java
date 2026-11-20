@@ -217,6 +217,49 @@ public class BaseHttpServerConfigTest {
     }
 
     @Nested
+    class MutualTlsSslValidation {
+        @Test
+        void isSslEnabledForMutualTls_should_return_true_when_authentication_is_null() {
+            final BaseHttpServerConfig objectUnderTest = new BaseHttpServerConfig();
+
+            assertThat(objectUnderTest.isSslEnabledForMutualTls(), equalTo(true));
+        }
+
+        @Test
+        void isSslEnabledForMutualTls_should_return_true_when_authentication_is_not_mutual_tls() throws NoSuchFieldException, IllegalAccessException {
+            final BaseHttpServerConfig objectUnderTest = new BaseHttpServerConfig();
+
+            ReflectivelySetField.setField(BaseHttpServerConfig.class, objectUnderTest, "authentication",
+                    new PluginModel("http_basic", new HashMap<>()));
+            ReflectivelySetField.setField(BaseHttpServerConfig.class, objectUnderTest, "ssl", false);
+
+            assertThat(objectUnderTest.isSslEnabledForMutualTls(), equalTo(true));
+        }
+
+        @Test
+        void isSslEnabledForMutualTls_should_return_false_when_mutual_tls_and_ssl_is_false() throws NoSuchFieldException, IllegalAccessException {
+            final BaseHttpServerConfig objectUnderTest = new BaseHttpServerConfig();
+
+            ReflectivelySetField.setField(BaseHttpServerConfig.class, objectUnderTest, "authentication",
+                    new PluginModel("mutual_tls", new HashMap<>()));
+            ReflectivelySetField.setField(BaseHttpServerConfig.class, objectUnderTest, "ssl", false);
+
+            assertThat(objectUnderTest.isSslEnabledForMutualTls(), equalTo(false));
+        }
+
+        @Test
+        void isSslEnabledForMutualTls_should_return_true_when_mutual_tls_and_ssl_is_true() throws NoSuchFieldException, IllegalAccessException {
+            final BaseHttpServerConfig objectUnderTest = new BaseHttpServerConfig();
+
+            ReflectivelySetField.setField(BaseHttpServerConfig.class, objectUnderTest, "authentication",
+                    new PluginModel("mutual_tls", new HashMap<>()));
+            ReflectivelySetField.setField(BaseHttpServerConfig.class, objectUnderTest, "ssl", true);
+
+            assertThat(objectUnderTest.isSslEnabledForMutualTls(), equalTo(true));
+        }
+    }
+
+    @Nested
     class SslValidationWithS3 {
         @Test
         void isSslCertAndKeyFileInS3_should_return_true_if_ssl_is_true_and_KeyFile_and_certFile_are_s3_paths() throws NoSuchFieldException, IllegalAccessException {

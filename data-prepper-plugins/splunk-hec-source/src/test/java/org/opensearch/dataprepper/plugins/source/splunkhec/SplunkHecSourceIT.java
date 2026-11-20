@@ -23,15 +23,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.awaitility.Awaitility;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.plugins.UnauthenticatedArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.source.splunkhec.model.HecTokenConfig;
 
 import java.time.Duration;
@@ -46,6 +49,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -107,6 +111,8 @@ class SplunkHecSourceIT {
         when(pipelineDescription.getPipelineName()).thenReturn("test-pipeline");
 
         final PluginFactory pluginFactory = mock(PluginFactory.class);
+        when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(new UnauthenticatedArmeriaHttpAuthenticationProvider());
         final AcknowledgementSetManager ackManager = mock(AcknowledgementSetManager.class);
 
         source = new SplunkHecSource(config, pluginMetrics, pluginFactory, pipelineDescription, ackManager, TEST_EVENT_FACTORY);
