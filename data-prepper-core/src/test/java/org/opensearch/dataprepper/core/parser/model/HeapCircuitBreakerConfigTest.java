@@ -24,6 +24,7 @@ import java.time.Duration;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class HeapCircuitBreakerConfigTest {
@@ -50,6 +51,7 @@ class HeapCircuitBreakerConfigTest {
         assertThat(config.getUsage().getBytes(), equalTo(24L));
         assertThat(config.getReset(), notNullValue());
         assertThat(config.getReset(), equalTo(Duration.ofSeconds(3)));
+        assertThat(config.getCloseUsage(), nullValue());
     }
 
     @Test
@@ -63,5 +65,18 @@ class HeapCircuitBreakerConfigTest {
         assertThat(config.getUsage().getBytes(), equalTo(24L));
         assertThat(config.getReset(), notNullValue());
         assertThat(config.getReset(), equalTo(HeapCircuitBreakerConfig.DEFAULT_RESET));
+        assertThat(config.getCloseUsage(), nullValue());
+    }
+
+    @Test
+    void deserialize_heap_with_close_usage() throws IOException {
+        final InputStream resourceStream = this.getClass().getResourceAsStream("heap_with_close_usage.yaml");
+
+        final HeapCircuitBreakerConfig config = objectMapper.readValue(resourceStream, HeapCircuitBreakerConfig.class);
+
+        assertThat(config, notNullValue());
+        assertThat(config.getUsage().getBytes(), equalTo(24L));
+        assertThat(config.getCloseUsage(), notNullValue());
+        assertThat(config.getCloseUsage().getBytes(), equalTo(16L));
     }
 }

@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.metric.Metric;
@@ -28,7 +29,9 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImplBase {
@@ -44,6 +47,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final int bufferWriteTimeoutInMillis;
     private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
     private final Buffer<Record<? extends Metric>> buffer;
+    private final CircuitBreaker circuitBreaker;
 
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
@@ -56,11 +60,13 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
+                                  final CircuitBreaker circuitBreaker,
                                   final Set<String> bufferPartitionKeys,
                                   final PluginMetrics pluginMetrics,
                                   final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
+        this.circuitBreaker = Objects.requireNonNull(circuitBreaker);
 
         this.bufferPartitionKeys = bufferPartitionKeys;
         if (metricsPrefix != null) {
@@ -99,6 +105,10 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     }
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
+        if (circuitBreaker.isOpen()) {
+            throw new BufferWriteException("Circuit breaker is open.", new TimeoutException("Circuit breaker is open."));
+        }
+
         try {
             if (buffer.isByteBuffer()) {
                 if (bufferPartitionKeys != null && !bufferPartitionKeys.isEmpty()) {
