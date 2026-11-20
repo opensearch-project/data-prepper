@@ -1,0 +1,46 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api libs.google.auth.oauth2.http
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+    constraints {
+        api('com.google.guava:guava') {
+            version {
+                require '33.7.2-jre'
+            }
+            because 'Fixes CVE-2026-102554.'
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 1.0
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification

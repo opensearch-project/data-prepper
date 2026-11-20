@@ -69,6 +69,7 @@ dependencyResolutionManagement {
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
             library('commons-compress', 'org.apache.commons', 'commons-compress').version('1.24.0')
             library('hibernate-validator', 'org.hibernate.validator', 'hibernate-validator').version('8.0.0.Final')
+            library('google-auth-oauth2-http', 'com.google.auth', 'google-auth-library-oauth2-http').version('1.57.0')
             version('parquet', '1.15.2')
             library('parquet-common', 'org.apache.parquet', 'parquet-common').versionRef('parquet')
             library('parquet-avro', 'org.apache.parquet', 'parquet-avro').versionRef('parquet')
@@ -190,6 +191,8 @@ include 'data-prepper-plugins:user-agent-processor'
 include 'data-prepper-plugins:in-memory-source-coordination-store'
 include 'data-prepper-plugins:aws-plugin-api'
 include 'data-prepper-plugins:aws-plugin'
+include 'data-prepper-plugins:gcp-plugin-api'
+include 'data-prepper-plugins:gcp-plugin'
 include 'data-prepper-plugins:obfuscate-processor'
 include 'data-prepper-plugins:parquet-codecs'
 include 'data-prepper-plugins:aws-sqs-common'
