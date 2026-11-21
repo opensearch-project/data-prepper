@@ -102,6 +102,8 @@ class OtelTraceRawProcessorConfigTest {
     @CsvSource({
             "genai_root_propagation, ai_root",
             "genai_root_propagation, none",
+            "genai_root_marking, outermost",
+            "genai_root_marking, none",
             "genai_coverage_cache_max_size, 1000"
     })
     void isGenAiSettingsValid_whenAGenAiSettingIsSetWithEnrichmentDisabled_isFalse(final String setting, final String value) {
@@ -146,6 +148,34 @@ class OtelTraceRawProcessorConfigTest {
     @ValueSource(strings = {"ALL_ROOTS", "None", "Ai_Root"})
     void deserialize_genAiRootPropagationInADifferentCase_fails(final String option) {
         assertThrows(IllegalArgumentException.class, () -> deserialize(Map.of("genai_root_propagation", option)));
+    }
+
+    @Test
+    void getGenAiRootMarking_whenNotSet_isOutermost() {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of());
+
+        assertThat(config.getGenAiRootMarking(), equalTo(GenAiRootMarking.OUTERMOST));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "outermost, OUTERMOST",
+            "agent_spans, AGENT_SPANS",
+            "none, NONE"
+    })
+    void deserialize_genAiRootMarking_readsEachOption(final String option, final GenAiRootMarking expected) {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of("genai_root_marking", option));
+
+        assertThat(config.getGenAiRootMarking(), equalTo(expected));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"AGENT_SPANS", "Outermost", "agent-spans", "all"})
+    void deserialize_genAiRootMarkingNotWrittenExactly_failsWithTheAllowedValues(final String option) {
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> deserialize(Map.of("genai_root_marking", option)));
+
+        assertThat(exception.getMessage(), containsString("outermost, agent_spans, none"));
     }
 
     @Test

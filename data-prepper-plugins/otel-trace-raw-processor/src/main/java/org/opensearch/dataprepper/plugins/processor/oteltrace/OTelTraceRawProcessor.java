@@ -61,6 +61,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     /** Span ids covered by GenAI spans, per trace, for spans that arrive after their ancestors. */
     private final GenAiCoverage genAiCoverage;
     private final GenAiRootPropagation genAiRootPropagation;
+    private final GenAiRootMarking genAiRootMarking;
     private final boolean genAiEnrichmentEnabled;
 
     private long lastTraceFlushTime = 0L;
@@ -91,8 +92,11 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         genAiEnrichmentEnabled = !otelTraceRawProcessorConfig.isGenAiEnrichmentDisabled();
         genAiRootPropagation = Objects.requireNonNullElse(
                 otelTraceRawProcessorConfig.getGenAiRootPropagation(), GenAiRootPropagation.AI_ROOT);
+        genAiRootMarking = Objects.requireNonNullElse(
+                otelTraceRawProcessorConfig.getGenAiRootMarking(), GenAiRootMarking.OUTERMOST);
         // Outlives the orphan flush: spans that arrive late are held up to two flush intervals.
-        genAiCoverage = genAiEnrichmentEnabled
+        // Only outermost marking reads earlier batches, so the other modes keep no cache.
+        genAiCoverage = genAiEnrichmentEnabled && genAiRootMarking == GenAiRootMarking.OUTERMOST
                 ? GenAiCoverage.create(otelTraceRawProcessorConfig.getGenAiCoverageCacheMaxSize(),
                         Duration.ofMillis(2 * traceFlushInterval).plus(traceGroupCacheTimeToLive))
                 : GenAiCoverage.NONE;
@@ -103,7 +107,9 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         pluginMetrics.gauge(GENAI_COVERAGE_SPAN_ID_COUNT_METRIC_NAME, genAiCoverage, coverage -> (double) coverage.spanIdCount());
 
         LOG.info("Configured Trace Raw Processor with a trace flush interval of {} ms, GenAI enrichment {}.",
-                traceFlushInterval, genAiEnrichmentEnabled ? "enabled with root propagation " + genAiRootPropagation : "disabled");
+                traceFlushInterval, genAiEnrichmentEnabled
+                        ? "enabled with root propagation " + genAiRootPropagation + " and root marking " + genAiRootMarking
+                        : "disabled");
     }
 
     /**
@@ -127,7 +133,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
         // Enrich GenAI agent traces (normalize attributes, strip conflicting sub-keys, mark agent roots, enrich roots)
         if (genAiEnrichmentEnabled) {
-            GenAiEnrichmentHelper.enrichBatch(processedSpans, genAiCoverage, genAiRootPropagation);
+            GenAiEnrichmentHelper.enrichBatch(processedSpans, genAiCoverage, genAiRootPropagation, genAiRootMarking);
         }
 
         // Derive server span attributes (fault, error, operation, environment)

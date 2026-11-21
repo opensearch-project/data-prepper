@@ -66,6 +66,14 @@ public class OtelTraceRawProcessorConfig {
             "Default is <code>ai_root</code>.")
     private GenAiRootPropagation genAiRootPropagation;
 
+    @JsonProperty(value = "genai_root_marking", defaultValue = "outermost")
+    @JsonPropertyDescription("Which spans are marked <code>derived.gen_ai.is_root: true</code> as agent roots. " +
+            "<code>outermost</code> marks the outermost GenAI span of each trace. <code>agent_spans</code> marks every " +
+            "<code>invoke_agent</code> and <code>invoke_workflow</code> span, whatever the batch or arrival order, " +
+            "including nested agents. <code>none</code> marks nothing and keeps only markers set at the source. " +
+            "A marker set at the source is never changed. Default is <code>outermost</code>.")
+    private GenAiRootMarking genAiRootMarking;
+
     public long getTraceFlushIntervalSeconds() {
         return traceFlushInterval;
     }
@@ -90,8 +98,14 @@ public class OtelTraceRawProcessorConfig {
         return genAiRootPropagation != null ? genAiRootPropagation : GenAiRootPropagation.AI_ROOT;
     }
 
-    @AssertTrue(message = "genai_root_propagation and genai_coverage_cache_max_size cannot be set when disable_genai_enrichment is true")
+    public GenAiRootMarking getGenAiRootMarking() {
+        return genAiRootMarking != null ? genAiRootMarking : GenAiRootMarking.OUTERMOST;
+    }
+
+    @AssertTrue(message = "genai_root_propagation, genai_root_marking and genai_coverage_cache_max_size cannot be set " +
+            "when disable_genai_enrichment is true")
     boolean isGenAiSettingsValid() {
-        return !disableGenAiEnrichment || (genAiRootPropagation == null && genAiCoverageCacheMaxSize == null);
+        return !disableGenAiEnrichment
+                || (genAiRootPropagation == null && genAiRootMarking == null && genAiCoverageCacheMaxSize == null);
     }
 }
