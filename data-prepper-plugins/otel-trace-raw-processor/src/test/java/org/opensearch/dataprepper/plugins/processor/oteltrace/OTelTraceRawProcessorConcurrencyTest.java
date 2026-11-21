@@ -10,7 +10,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
@@ -33,8 +36,10 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.oteltrace.GenAiEnrichmentHelper.DERIVED_GEN_AI_IS_ROOT_KEY;
@@ -99,7 +104,7 @@ class OTelTraceRawProcessorConcurrencyTest {
     @Test
     void test_when_aGenAiRootAndItsChildAreProcessedConcurrentlyWithOutermostMarking_then_onlyTheRootIsMarked()
             throws Exception {
-        final OTelTraceRawProcessor processor = createGenAiProcessor(GenAiRootMarking.OUTERMOST);
+        final OTelTraceRawProcessor processor = createGenAiProcessor(GenAiRootMarking.OUTERMOST, Duration.ZERO);
         final ExecutorService executorService = Executors.newFixedThreadPool(2);
         try {
             for (int iteration = 0; iteration < GENAI_ITERATIONS; iteration++) {
@@ -145,7 +150,75 @@ class OTelTraceRawProcessorConcurrencyTest {
         assertThat(processor.isReadyForShutdown(), is(true));
     }
 
-    private static OTelTraceRawProcessor createGenAiProcessor(final GenAiRootMarking marking) {
+    /**
+     * With the root hold, a GenAI root that arrives before its child is held while the child is
+     * written: the child must still not be marked in outermost mode, and the root must end up
+     * enriched, written once, and marked as the mode says. Each iteration releases its held root by
+     * shutting its processor down, so the test does not wait for the hold to expire.
+     */
+    @ParameterizedTest
+    @EnumSource(GenAiRootMarking.class)
+    void test_when_aHeldGenAiRootAndItsChildAreProcessedConcurrently_then_eachIsEmittedOnceEnrichedAndMarkedByTheMode(
+            final GenAiRootMarking marking) throws Exception {
+        final ExecutorService executorService = Executors.newFixedThreadPool(2);
+        int heldRootIterations = 0;
+        try {
+            for (int iteration = 0; iteration < GENAI_ITERATIONS; iteration++) {
+                final OTelTraceRawProcessor processor = createGenAiProcessor(marking, Duration.ofSeconds(30));
+                final String traceId = "held-genai-race-trace-" + marking + "-" + iteration;
+                final String rootSpanId = "root-" + iteration;
+                final String childSpanId = "chat-" + iteration;
+                final Span rootSpan = genAiSpan(traceId, rootSpanId, "", Map.of("gen_ai.operation.name", "invoke_agent"));
+                final Span childSpan = genAiSpan(traceId, childSpanId, rootSpanId, Map.of(
+                        "gen_ai.operation.name", "chat",
+                        "gen_ai.request.model", "gpt-4o",
+                        "gen_ai.usage.input_tokens", 12L,
+                        "gen_ai.usage.output_tokens", 5L));
+
+                final CountDownLatch startLatch = new CountDownLatch(1);
+                final Future<Collection<Record<Span>>> rootFuture = executorService.submit(() -> {
+                    startLatch.await();
+                    return processor.doExecute(List.of(new Record<>(rootSpan)));
+                });
+                final Future<Collection<Record<Span>>> childFuture = executorService.submit(() -> {
+                    startLatch.await();
+                    return processor.doExecute(List.of(new Record<>(childSpan)));
+                });
+                startLatch.countDown();
+
+                final List<Span> emittedSpans = new ArrayList<>();
+                rootFuture.get(10, TimeUnit.SECONDS).forEach(record -> emittedSpans.add(record.getData()));
+                childFuture.get(10, TimeUnit.SECONDS).forEach(record -> emittedSpans.add(record.getData()));
+                if (!processor.isReadyForShutdown()) {
+                    heldRootIterations++;
+                }
+                // Releases a root still held after both workers finished.
+                processor.prepareForShutdown();
+                processor.doExecute(List.of()).forEach(record -> emittedSpans.add(record.getData()));
+                assertThat("iteration " + iteration, processor.isReadyForShutdown(), is(true));
+
+                final List<String> emittedSpanIds = emittedSpans.stream()
+                        .map(Span::getSpanId)
+                        .sorted()
+                        .collect(Collectors.toList());
+                assertThat("iteration " + iteration, emittedSpanIds, equalTo(List.of(childSpanId, rootSpanId)));
+                final Map<String, Object> root = byId(emittedSpans, rootSpanId).getAttributes();
+                assertThat("iteration " + iteration, root.get("gen_ai.request.model"), equalTo("gpt-4o"));
+                assertThat("iteration " + iteration, ((Number) root.get("gen_ai.usage.input_tokens")).longValue(), equalTo(12L));
+                assertThat("iteration " + iteration, ((Number) root.get("gen_ai.usage.output_tokens")).longValue(), equalTo(5L));
+                assertThat("iteration " + iteration + " child marked",
+                        byId(emittedSpans, childSpanId).getAttributes().get(DERIVED_GEN_AI_IS_ROOT_KEY), nullValue());
+                assertThat("iteration " + iteration + " root marked",
+                        root.get(DERIVED_GEN_AI_IS_ROOT_KEY), marking == GenAiRootMarking.NONE ? nullValue() : equalTo(true));
+            }
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        assertThat("iterations that held the root", heldRootIterations, greaterThan(0));
+    }
+
+    private static OTelTraceRawProcessor createGenAiProcessor(final GenAiRootMarking marking, final Duration genAiRootHold) {
         final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
@@ -154,7 +227,13 @@ class OTelTraceRawProcessorConcurrencyTest {
         when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
         when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.AI_ROOT);
         when(config.getGenAiRootMarking()).thenReturn(marking);
-        return new OTelTraceRawProcessor(config, mock(PipelineDescription.class), mock(PluginMetrics.class));
+        when(config.getGenAiRootEnrichmentCacheMaxSize())
+                .thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_ROOT_ENRICHMENT_CACHE_MAX_SIZE);
+        when(config.getGenAiRootHold()).thenReturn(genAiRootHold);
+        when(config.getGenAiRootHoldMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_ROOT_HOLD_MAX_SIZE);
+        final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+        when(pluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
+        return new OTelTraceRawProcessor(config, mock(PipelineDescription.class), pluginMetrics);
     }
 
     private static Span genAiSpan(final String traceId, final String spanId, final String parentSpanId,
