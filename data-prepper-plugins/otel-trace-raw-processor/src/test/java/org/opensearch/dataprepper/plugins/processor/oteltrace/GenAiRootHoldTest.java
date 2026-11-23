@@ -13,6 +13,8 @@ package org.opensearch.dataprepper.plugins.processor.oteltrace;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -377,6 +379,59 @@ class GenAiRootHoldTest {
         assertThat(tokens(root, "gen_ai.usage.output_tokens"), equalTo(7L));
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "openinference.span.kind, AGENT",
+            "openinference.span.kind, CHAIN",
+            "traceloop.span.kind, workflow",
+            "traceloop.span.kind, agent"
+    })
+    void test_when_aVendorRootArrivesBeforeItsChildren_then_itIsHeldAndFilledAtTheDeadline(final String key, final String kind) {
+        genAiRootHold = Duration.ofMillis(200);
+        final OTelTraceRawProcessor processor = createObjectUnderTest();
+
+        assertThat(execute(processor, span("root", "", Map.of(key, kind))), is(empty()));
+        assertThat(spanIds(execute(processor, vendorLlmSpan("llm", "root"))), contains("llm"));
+        final List<Span> released = executeUntilEmitted(processor);
+
+        assertThat(spanIds(released), contains("root"));
+        final Map<String, Object> root = released.get(0).getAttributes();
+        assertThat(root.get("gen_ai.operation.name"), equalTo("invoke_agent"));
+        assertThat(root.get("gen_ai.request.model"), equalTo("gpt-4o"));
+        assertThat(tokens(root, "gen_ai.usage.input_tokens"), equalTo(150L));
+        assertThat(tokens(root, "gen_ai.usage.output_tokens"), equalTo(85L));
+        verify(counter(OTelTraceRawProcessor.GENAI_HELD_ROOT_EXPIRED_COUNT_METRIC_NAME)).increment();
+    }
+
+    @Test
+    void test_when_aVendorRootCarriesItsModelAndTokensOnlyUnderVendorKeys_then_itIsNotHeld() {
+        final OTelTraceRawProcessor processor = createObjectUnderTest();
+
+        final List<Span> batch = execute(processor, span("root", "", Map.of(
+                "openinference.span.kind", "AGENT",
+                "llm.model_name", "gpt-4o",
+                "llm.token_count.prompt", 12L)));
+
+        assertThat(spanIds(batch), contains("root"));
+        assertThat(batch.get(0).getAttributes().get("gen_ai.request.model"), equalTo("gpt-4o"));
+        assertThat(gauge(OTelTraceRawProcessor.GENAI_HELD_ROOT_COUNT_METRIC_NAME), equalTo(0.0));
+    }
+
+    @Test
+    void test_when_genAiRootHoldIsTheDefault_then_aVendorRootIsWrittenImmediatelyMarkedAndALaterChildIsNot() {
+        genAiRootHold = OtelTraceRawProcessorConfig.DEFAULT_GENAI_ROOT_HOLD;
+        genAiRootMarking = GenAiRootMarking.OUTERMOST;
+        final OTelTraceRawProcessor processor = createObjectUnderTest();
+
+        final List<Span> rootBatch = execute(processor, span("root", "", Map.of("openinference.span.kind", "AGENT")));
+        final List<Span> childBatch = execute(processor, span("agent", "missing-parent", Map.of("openinference.span.kind", "AGENT")));
+
+        assertThat(spanIds(rootBatch), contains("root"));
+        assertThat(rootBatch.get(0).getAttributes().get(DERIVED_GEN_AI_IS_ROOT_KEY), equalTo(true));
+        assertThat(rootBatch.get(0).getAttributes().get("gen_ai.request.model"), nullValue());
+        assertThat(childBatch.get(0).getAttributes().get(DERIVED_GEN_AI_IS_ROOT_KEY), nullValue());
+    }
+
     private OTelTraceRawProcessor createObjectUnderTest() {
         final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC);
@@ -442,6 +497,15 @@ class GenAiRootHoldTest {
             attributes.put("gen_ai.request.model", model);
         }
         return span(spanId, parentSpanId, attributes);
+    }
+
+    /** An OpenInference LLM span that reports its model and token usage only under vendor keys. */
+    private static Span vendorLlmSpan(final String spanId, final String parentSpanId) {
+        return span(spanId, parentSpanId, Map.of(
+                "openinference.span.kind", "LLM",
+                "llm.model_name", "gpt-4o",
+                "llm.token_count.prompt", 150L,
+                "llm.token_count.completion", 85L));
     }
 
     private static Span span(final String spanId, final String parentSpanId, final Map<String, Object> attributes) {

@@ -104,6 +104,18 @@ class OTelTraceRawProcessorConcurrencyTest {
     @Test
     void test_when_aGenAiRootAndItsChildAreProcessedConcurrentlyWithOutermostMarking_then_onlyTheRootIsMarked()
             throws Exception {
+        processRootAndChildConcurrentlyWithOutermostMarking(Map.of("gen_ai.operation.name", "invoke_agent"));
+    }
+
+    /** A vendor-instrumented root is recognized as a GenAI root when it arrives, before its trace group is cached. */
+    @Test
+    void test_when_aVendorGenAiRootAndItsChildAreProcessedConcurrentlyWithOutermostMarking_then_onlyTheRootIsMarked()
+            throws Exception {
+        processRootAndChildConcurrentlyWithOutermostMarking(Map.of("openinference.span.kind", "AGENT"));
+    }
+
+    private static void processRootAndChildConcurrentlyWithOutermostMarking(final Map<String, Object> rootAttributes)
+            throws Exception {
         final OTelTraceRawProcessor processor = createGenAiProcessor(GenAiRootMarking.OUTERMOST, Duration.ZERO);
         final ExecutorService executorService = Executors.newFixedThreadPool(2);
         try {
@@ -111,7 +123,7 @@ class OTelTraceRawProcessorConcurrencyTest {
                 final String traceId = "genai-race-trace-" + iteration;
                 final String rootSpanId = "root-" + iteration;
                 final String childSpanId = "chat-" + iteration;
-                final Span rootSpan = genAiSpan(traceId, rootSpanId, "", Map.of("gen_ai.operation.name", "invoke_agent"));
+                final Span rootSpan = genAiSpan(traceId, rootSpanId, "", rootAttributes);
                 final Span childSpan = genAiSpan(traceId, childSpanId, rootSpanId, Map.of(
                         "gen_ai.operation.name", "chat",
                         "gen_ai.request.model", "gpt-4o",

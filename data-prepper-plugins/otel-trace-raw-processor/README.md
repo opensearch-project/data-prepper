@@ -57,6 +57,7 @@ Instrumentation libraries name the same data differently: input tokens are `llm.
 * A `gen_ai.*` attribute already on the span is never overwritten.
 * When several attributes on one span map to the same `gen_ai.*` name, the one listed first in the file wins. For example OpenInference `session.id` wins over Traceloop's `traceloop.association.properties.session_id`; both map to `gen_ai.conversation.id`.
 * Operation kinds are mapped to `gen_ai.operation.name` values, for example OpenInference `LLM` to `chat`, `AGENT` and `CHAIN` to `invoke_agent`, `TOOL` to `execute_tool` (see `operation_name_values` in the file).
+* The processor normalizes each span as it arrives, before anything else reads it, so holding a root (`genai_root_hold`) and recording a trace's GenAI root for `genai_root_marking: outermost` also recognize vendor-instrumented spans, such as an OpenInference `AGENT` root or a root whose model is only in `llm.model_name`.
 * Some mappings wrap a single value in a JSON array (`wrap_as_array`), for example a finish reason into `gen_ai.response.finish_reasons`.
 
 ### Flattened sub-key stripping

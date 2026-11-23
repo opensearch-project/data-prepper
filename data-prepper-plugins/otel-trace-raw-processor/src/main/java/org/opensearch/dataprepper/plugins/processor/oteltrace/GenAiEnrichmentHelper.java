@@ -505,7 +505,7 @@ final class GenAiEnrichmentHelper {
 
     /**
      * Whether a span is itself a GenAI span or is marked {@code true} at the source, the spans that
-     * are covered on their own. Reads the attributes as they arrived, before vendor normalization.
+     * are covered on their own. The processor normalizes vendor attributes before calling this.
      */
     static boolean isGenAiOrMarkedSpan(final Span span) {
         final Map<String, Object> attributes = span.getAttributes();
