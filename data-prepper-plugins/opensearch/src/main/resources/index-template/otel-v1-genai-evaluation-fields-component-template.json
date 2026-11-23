@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "template": {
+    "mappings": {
+      "properties": {
+        "eventName": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "attributes": {
+          "properties": {
+            "gen_ai": {
+              "properties": {
+                "evaluation": {
+                  "properties": {
+                    "score": {
+                      "properties": {
+                        "value": {
+                          "type": "double"
+                        },
+                        "label": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "explanation": {
+                      "type": "text"
+                    },
+                    "name": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "agent": {
+                  "properties": {
+                    "version": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    },
+                    "name": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "prompt": {
+                  "properties": {
+                    "version": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "conversation": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            },
+            "opensearch": {
+              "properties": {
+                "gen_ai": {
+                  "properties": {
+                    "evaluation": {
+                      "properties": {
+                        "score": {
+                          "properties": {
+                            "min": {
+                              "type": "double"
+                            },
+                            "max": {
+                              "type": "double"
+                            },
+                            "threshold": {
+                              "type": "double"
+                            },
+                            "direction": {
+                              "type": "keyword",
+                              "ignore_above": 256
+                            }
+                          }
+                        },
+                        "evaluator": {
+                          "properties": {
+                            "version": {
+                              "type": "keyword",
+                              "ignore_above": 256
+                            }
+                          }
+                        },
+                        "level": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "test": {
+              "properties": {
+                "case": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "suite": {
+                  "properties": {
+                    "run": {
+                      "properties": {
+                        "id": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "name": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            },
+            "error": {
+              "properties": {
+                "type": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

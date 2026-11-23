@@ -20,7 +20,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch._types.ErrorResponse;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.ExistsComponentTemplateRequest;
 import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
 import org.opensearch.client.opensearch.cluster.PutComponentTemplateResponse;
@@ -41,6 +43,7 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -143,6 +146,28 @@ class ComponentTemplateAPIWrapperTest {
         assertThat(endpoint.hasRequestBody(), equalTo(true));
         assertThat(endpoint, instanceOf(JsonEndpoint.class));
         assertThat(((JsonEndpoint) endpoint).responseDeserializer(), equalTo(PutComponentTemplateResponse._DESERIALIZER));
+        // The transport throws for error statuses, so a rejected component template fails the index setup.
+        assertThat(endpoint.isError(200), equalTo(false));
+        assertThat(endpoint.isError(400), equalTo(true));
+        assertThat(endpoint.isError(500), equalTo(true));
+        assertThat(endpoint.errorDeserializer(400), notNullValue());
+    }
+
+    @Test
+    void putComponentTemplate_throws_when_the_request_fails() throws IOException {
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchClient._transportOptions()).thenReturn(openSearchTransportOptions);
+        final Map<String, Object> body = Map.of("version", 1, "template", Map.of("mappings", Map.of()));
+        final OpenSearchException failure = new OpenSearchException(new ErrorResponse.Builder()
+                .status(400)
+                .error(new ErrorCause.Builder().type("mapper_parsing_exception").reason("failed to parse mapping").build())
+                .build());
+        when(openSearchTransport.performRequest(eq(body), any(), eq(openSearchTransportOptions))).thenThrow(failure);
+
+        final ComponentTemplateAPIWrapper objectUnderTest = createObjectUnderTest();
+        final OpenSearchException thrown = assertThrows(OpenSearchException.class,
+                () -> objectUnderTest.putComponentTemplate(componentTemplateName, body));
+        assertThat(thrown.status(), equalTo(400));
     }
 
     private void stubGetResponse(final String responseBody) throws IOException {

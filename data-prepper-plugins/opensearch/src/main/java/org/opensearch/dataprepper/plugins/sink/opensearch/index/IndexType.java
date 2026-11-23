@@ -19,6 +19,22 @@ public enum IndexType {
     OTEL_APM_SERVICE_MAP("otel-v2-apm-service-map"),
     LOG_ANALYTICS("log-analytics"),
     LOG_ANALYTICS_PLAIN("log-analytics-plain"),
+    /**
+     * Experimental. Stores OpenTelemetry {@code gen_ai.evaluation.result} log events, with
+     * attributes under their dotted OpenTelemetry names, using the
+     * {@code otel-v1-genai-evaluation-index-template} composable index template. The template is
+     * composed of the {@code otel-v1-genai-evaluation-logs-plain} component template, built from the
+     * {@code log-analytics-plain} template, and the {@code otel-v1-genai-evaluation-fields} component
+     * template, which holds only the evaluation fields. On clusters with ISM the
+     * sink writes to the {@code otel-v1-genai-evaluation} alias over
+     * {@code otel-v1-genai-evaluation-000001}, rolled over by the
+     * {@code otel-v1-genai-evaluation-policy} ISM policy. On Amazon OpenSearch Serverless, which
+     * has no ISM or aliases, it writes to a plain index named {@code otel-v1-genai-evaluation}.
+     * The index pattern {@code otel-v1-genai-evaluation*} covers both layouts.
+     * Requires the {@code index-template} template type; {@code v1} and Elasticsearch 6 are not
+     * supported. The mappings may change in a minor release.
+     */
+    GENAI_EVALUATION_PLAIN("genai-evaluation-plain"),
     METRIC_ANALYTICS("metric-analytics"),
     METRIC_ANALYTICS_PLAIN("metric-analytics-plain"),
     TSDB("tsdb"),
