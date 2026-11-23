@@ -80,7 +80,7 @@ Agents usually run behind a service: the trace's root is an HTTP or RPC span, su
 
 | Value | Spans the processor marks | When to use it |
 |---|---|---|
-| `outermost` (default) | The outermost GenAI span of each trace, as described above. | Most pipelines, and any consumer that expects one marked span per agent run. The result depends on which spans of a trace are in the same batch, so spans that arrive out of order or are processed at the same time by different workers can mark a second span (see the known limits below). |
+| `outermost` (default) | The outermost GenAI span of each trace, as described above. | Most pipelines, and any consumer that expects one marked span per agent run. A trace whose root is a GenAI span is marked correctly whatever the arrival order. For agents behind a non-GenAI root, the result depends on which spans of a trace are in the same batch, so spans that arrive out of order can mark a second span (see the known limits below). |
 | `agent_spans` | Every span whose `gen_ai.operation.name` is `invoke_agent` or `invoke_workflow` (after [vendor attribute normalization](#vendor-attribute-normalization)). No other operation is marked. | Agents instrumented without an SDK that marks roots, when every consumer of the marker handles nested agents. The marker is decided from the span alone, so the result is the same whatever the batch split, arrival order, worker or node, and no coverage cache is kept. |
 | `none` | No span. Only markers set at the source are kept. | Applications that mark their own agent roots, for example with `mark_agent_root()` in the GenAI observability SDK for Python or `markAgentRoot()` in TypeScript. This is the most reliable option, because the application knows which span is the agent run. |
 
@@ -111,9 +111,12 @@ Spans of a trace can arrive in several batches. A span that arrives after its ag
 * The cache holds at most `genai_coverage_cache_max_size` span ids across all traces. Only traces with GenAI data are stored. The `genAiCoverageSpanIdCount` metric reports how full it is, in span ids; `genAiCoverageCount` reports the number of traces.
 * Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 900 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
 * The covered-span lookup, the marking and the update run atomically per trace, so pipeline workers processing spans of one trace at the same time do not both mark one.
+* **GenAI roots.** When a trace's root is a GenAI span, or is marked `true` at the source, every other span of the trace descends from it, so only the root is marked. The processor records such a root in the cache before any of its children can be processed, so this holds whatever order the trace's spans arrive in and whichever pipeline workers process them: a child, or a nested agent that arrives before its parent, is not marked as a second agent run.
+* **Agents behind a non-GenAI root.** When the root is an HTTP or RPC span that an agent runs behind, a span is outermost when no GenAI ancestor is in its batch or the cache. A nested span that arrives before its parent agent, for example a model call before the agent span that made it, finds no GenAI ancestor and is marked as well. `genai_root_marking: agent_spans` or `none` do not depend on arrival order, if that matters for your consumers.
 
 Known limits:
 
+* Behind a non-GenAI root, a nested span that arrives before its parent agent can be marked too, as described above.
 * A span that arrives after its trace's entry expired, or was evicted, can be marked.
 * If a trace's children are flushed before a GenAI root arrives, both the root and the outermost child can end up marked. Consumers should prefer the marked span with no parent.
 * If a called service's spans are flushed after `trace_flush_interval` without the caller's spans, the called agent is marked too, and is listed as its own agent run.

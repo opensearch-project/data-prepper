@@ -166,6 +166,11 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
      * cached. A child inserts itself and then re-checks the cache ({@link #processChildSpan}), so
      * a child inserted too late for this claim finds the trace group and claims itself; the atomic
      * remove on both sides guarantees exactly one of them emits each waiting child.
+     * With {@code outermost} marking, a root that is a GenAI span or marked at the source is recorded
+     * in the GenAI coverage cache before its trace group is cached: cover before put, and put before
+     * claim, so any child that can observe the trace group, by its first lookup or by its re-check,
+     * also observes its root and is not marked as a second agent root. A non-GenAI root is never
+     * covered, so the agent span below it is still marked.
      *
      * @param parentSpan
      * @return List containing root span, along with any child spans that have already been processed.
@@ -173,6 +178,10 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private List<Span> processRootSpan(final Span parentSpan) {
         final TraceGroup traceGroup = TraceGroup.fromSpan(parentSpan);
         final String parentSpanTraceId = parentSpan.getTraceId();
+        if (genAiEnrichmentEnabled && genAiRootMarking == GenAiRootMarking.OUTERMOST
+                && GenAiEnrichmentHelper.isGenAiOrMarkedSpan(parentSpan)) {
+            genAiCoverage.coverGenAiRoot(parentSpanTraceId, parentSpan.getSpanId());
+        }
         traceIdTraceGroupCache.put(parentSpanTraceId, traceGroup);
 
         final List<Span> recordsToFlush = new LinkedList<>();

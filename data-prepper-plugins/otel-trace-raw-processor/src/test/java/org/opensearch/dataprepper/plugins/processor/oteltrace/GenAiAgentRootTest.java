@@ -303,6 +303,22 @@ class GenAiAgentRootTest {
         assertFalse(byId(out, "http").getAttributes().containsKey(DERIVED_GEN_AI_IS_ROOT_KEY));
     }
 
+    @Test
+    void marksTheAgentSpanThroughTheProcessorWhenANonGenAiRootArrivesFirst() {
+        // A non-GenAI root is not recorded as covered, so the agent below it is still outermost.
+        final OTelTraceRawProcessor processor = processor(true, GenAiRootPropagation.AI_ROOT, mock(PluginMetrics.class));
+
+        final List<Span> rootBatch = execute(processor, List.of(
+                span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST"))));
+        final List<Span> agentBatch = execute(processor, List.of(
+                span("agent", "http", "2026-01-01T00:00:01Z", Map.of(
+                        "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Travel Planner"))));
+
+        assertEquals(List.of("http"), rootBatch.stream().map(Span::getSpanId).collect(Collectors.toList()));
+        assertEquals(List.of(), markedSpanIds(rootBatch));
+        assertEquals(List.of("agent"), markedSpanIds(agentBatch));
+    }
+
     private static List<Span> crossServiceTrace() {
         final List<Span> spans = new ArrayList<>();
         spans.add(span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST")));

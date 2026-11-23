@@ -132,4 +132,55 @@ class GenAiCoverageTest {
         assertThat(coverage.covered(null), is(empty()));
         assertThat(coverage.estimatedSize(), equalTo(0L));
     }
+
+    @Test
+    void coverGenAiRoot_coversTheRootAndRecordsItAsTheGenAiRoot() {
+        final GenAiCoverage coverage = GenAiCoverage.create(100, Duration.ofMinutes(1));
+
+        coverage.coverGenAiRoot("trace", "root");
+        coverage.update("trace", known -> Set.of("child"));
+
+        assertThat(coverage.covered("trace"), equalTo(Set.of("root", "child")));
+        assertThat(coverage.isGenAiRootSeen("trace"), is(true));
+        assertThat(coverage.isGenAiRootSeen("other"), is(false));
+    }
+
+    @Test
+    void update_passesTheGenAiRootFact_andRecordsItWhenTheBatchHasAGenAiRoot() {
+        final GenAiCoverage coverage = GenAiCoverage.create(100, Duration.ofMinutes(1));
+
+        coverage.update("trace", false, (known, genAiRootSeen) -> {
+            assertThat(genAiRootSeen, is(false));
+            return Set.of("a");
+        });
+        coverage.update("trace", true, (known, genAiRootSeen) -> {
+            assertThat(genAiRootSeen, is(true));
+            return Set.of();
+        });
+        coverage.update("trace", false, (known, genAiRootSeen) -> {
+            assertThat(genAiRootSeen, is(true));
+            return Set.of();
+        });
+
+        assertThat(coverage.isGenAiRootSeen("trace"), is(true));
+        assertThat(coverage.covered("trace"), equalTo(Set.of("a")));
+    }
+
+    @Test
+    void coverGenAiRoot_onNone_keepsNothing() {
+        GenAiCoverage.NONE.coverGenAiRoot("trace", "root");
+
+        assertThat(GenAiCoverage.NONE.covered("trace"), is(empty()));
+        assertThat(GenAiCoverage.NONE.isGenAiRootSeen("trace"), is(false));
+    }
+
+    @Test
+    void update_onNone_passesTheBatchGenAiRootFact() {
+        GenAiCoverage.NONE.update("trace", true, (known, genAiRootSeen) -> {
+            assertThat(genAiRootSeen, is(true));
+            return Set.of("a");
+        });
+
+        assertThat(GenAiCoverage.NONE.isGenAiRootSeen("trace"), is(false));
+    }
 }
