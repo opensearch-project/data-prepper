@@ -114,7 +114,6 @@ class LogicalReplicationClientTest {
         when(logicalStreamBuilder.withSlotOption(anyString(), anyString())).thenReturn(logicalStreamBuilder);
         when(logicalStreamBuilder.start()).thenReturn(stream);
         when(stream.readPending()).thenReturn(message).thenReturn(null);
-        when(stream.getLastReceiveLSN()).thenReturn(lsn);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> logicalReplicationClient.connect());
@@ -124,8 +123,8 @@ class LogicalReplicationClientTest {
         Thread.sleep(20);
         executorService.shutdownNow();
 
-        verify(stream).setAppliedLSN(lsn);
-        verify(stream).setFlushedLSN(lsn);
+        verify(stream).setAppliedLSN(LogSequenceNumber.INVALID_LSN);
+        verify(stream).setFlushedLSN(LogSequenceNumber.INVALID_LSN);
         verify(streamApiInvocations).increment();
     }
 
@@ -198,7 +197,6 @@ class LogicalReplicationClientTest {
         when(logicalStreamBuilder.withSlotOption(anyString(), anyString())).thenReturn(logicalStreamBuilder);
         when(logicalStreamBuilder.start()).thenReturn(stream);
         when(stream.readPending()).thenReturn(message).thenReturn(null);
-        when(stream.getLastReceiveLSN()).thenReturn(lsn);
         when(stream.isClosed()).thenReturn(false, true);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -207,8 +205,8 @@ class LogicalReplicationClientTest {
         await().atMost(Duration.ofSeconds(1))
                 .untilAsserted(() -> verify(eventProcessor).process(message));
         Thread.sleep(20);
-        verify(stream).setAppliedLSN(lsn);
-        verify(stream).setFlushedLSN(lsn);
+        verify(stream).setAppliedLSN(LogSequenceNumber.INVALID_LSN);
+        verify(stream).setFlushedLSN(LogSequenceNumber.INVALID_LSN);
 
         logicalReplicationClient.disconnect();
         Thread.sleep(20);
@@ -235,7 +233,6 @@ class LogicalReplicationClientTest {
         when(logicalStreamBuilder.withSlotOption(anyString(), anyString())).thenReturn(logicalStreamBuilder);
         when(logicalStreamBuilder.start()).thenReturn(stream);
         when(stream.readPending()).thenReturn(message).thenReturn(null);
-        when(stream.getLastReceiveLSN()).thenReturn(lsn);
         when(stream.isClosed()).thenReturn(false, true);
 
         // First connect
@@ -244,8 +241,8 @@ class LogicalReplicationClientTest {
         await().atMost(Duration.ofSeconds(1))
                 .untilAsserted(() -> verify(eventProcessor, times(1)).process(message));
         Thread.sleep(20);
-        verify(stream).setAppliedLSN(lsn);
-        verify(stream).setFlushedLSN(lsn);
+        verify(stream).setAppliedLSN(LogSequenceNumber.INVALID_LSN);
+        verify(stream).setFlushedLSN(LogSequenceNumber.INVALID_LSN);
 
         // First disconnect
         logicalReplicationClient.disconnect();
@@ -261,8 +258,8 @@ class LogicalReplicationClientTest {
         await().atMost(Duration.ofSeconds(1))
                 .untilAsserted(() -> verify(eventProcessor, times(2)).process(message));
         Thread.sleep(20);
-        verify(stream, times(2)).setAppliedLSN(lsn);
-        verify(stream, times(2)).setFlushedLSN(lsn);
+        verify(stream, times(2)).setAppliedLSN(LogSequenceNumber.INVALID_LSN);
+        verify(stream, times(2)).setFlushedLSN(LogSequenceNumber.INVALID_LSN);
 
         // Second disconnect
         logicalReplicationClient.disconnect();
@@ -272,6 +269,39 @@ class LogicalReplicationClientTest {
         verifyNoMoreInteractions(stream, eventProcessor);
 
         executorService.shutdownNow();
+    }
+
+    @Test
+    void test_updateFlushedCommitLsn_updates_value_reported_to_stream() throws SQLException, InterruptedException {
+        final Connection connection = mock(Connection.class);
+        final PGConnection pgConnection = mock(PGConnection.class, RETURNS_DEEP_STUBS);
+        final ChainedLogicalStreamBuilder logicalStreamBuilder = mock(ChainedLogicalStreamBuilder.class);
+        final PGReplicationStream stream = mock(PGReplicationStream.class);
+        final ByteBuffer message = ByteBuffer.allocate(0);
+        final LogSequenceNumber commitLsn = LogSequenceNumber.valueOf("0/1234");
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.unwrap(PGConnection.class)).thenReturn(pgConnection);
+        when(pgConnection.getReplicationAPI().replicationStream().logical()).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.withSlotName(anyString())).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.withSlotOption(anyString(), anyString())).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.start()).thenReturn(stream);
+        when(stream.readPending()).thenReturn(message).thenReturn(null);
+
+        // Simulate a checkpoint callback updating the flushed commit LSN
+        logicalReplicationClient.updateFlushedCommitLsn(commitLsn);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> logicalReplicationClient.connect());
+
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> verify(eventProcessor).process(message));
+        Thread.sleep(20);
+        executorService.shutdownNow();
+
+        // After updateFlushedCommitLsn, the stream should report the commit LSN, not the read LSN
+        verify(stream).setFlushedLSN(commitLsn);
+        verify(stream).setAppliedLSN(commitLsn);
     }
 
     private LogicalReplicationClient createObjectUnderTest() {

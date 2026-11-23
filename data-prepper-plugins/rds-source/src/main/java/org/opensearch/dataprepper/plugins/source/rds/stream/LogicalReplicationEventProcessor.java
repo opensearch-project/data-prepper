@@ -148,7 +148,7 @@ public class LogicalReplicationEventProcessor {
         streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
                 acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(),
-                sourceConfig.getEngine(), pluginMetrics);
+                sourceConfig.getEngine(), pluginMetrics, logicalReplicationClient);
         streamCheckpointManager.start();
 
         this.pluginSetting = pluginSetting;

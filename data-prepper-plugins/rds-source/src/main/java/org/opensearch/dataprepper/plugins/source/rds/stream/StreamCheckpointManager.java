@@ -44,6 +44,7 @@ public class StreamCheckpointManager {
     private final Counter negativeAcknowledgementSets;
     private final Counter noDataExtendLeaseCount;
     private final Counter giveupPartitionCount;
+    private final ReplicationLogClient replicationLogClient;
 
     public StreamCheckpointManager(final StreamCheckpointer streamCheckpointer,
                                    final boolean isAcknowledgmentEnabled,
@@ -52,6 +53,18 @@ public class StreamCheckpointManager {
                                    final Duration acknowledgmentTimeout,
                                    final EngineType engineType,
                                    final PluginMetrics pluginMetrics) {
+        this(streamCheckpointer, isAcknowledgmentEnabled, acknowledgementSetManager,
+                stopStreamRunnable, acknowledgmentTimeout, engineType, pluginMetrics, null);
+    }
+
+    public StreamCheckpointManager(final StreamCheckpointer streamCheckpointer,
+                                   final boolean isAcknowledgmentEnabled,
+                                   final AcknowledgementSetManager acknowledgementSetManager,
+                                   final Runnable stopStreamRunnable,
+                                   final Duration acknowledgmentTimeout,
+                                   final EngineType engineType,
+                                   final PluginMetrics pluginMetrics,
+                                   final ReplicationLogClient replicationLogClient) {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.streamCheckpointer = streamCheckpointer;
         this.isAcknowledgmentEnabled = isAcknowledgmentEnabled;
@@ -59,6 +72,7 @@ public class StreamCheckpointManager {
         this.acknowledgmentTimeout = acknowledgmentTimeout;
         this.engineType = engineType;
         this.pluginMetrics = pluginMetrics;
+        this.replicationLogClient = replicationLogClient;
         executorService = Executors.newSingleThreadExecutor();
 
         this.positiveAcknowledgementSets = pluginMetrics.counter(POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);
@@ -176,6 +190,11 @@ public class StreamCheckpointManager {
                 changeEventStatus.getBinlogCoordinate() : changeEventStatus.getLogSequenceNumber(),
                 changeEventStatus.getRecordCount());
         streamCheckpointer.checkpoint(engineType, changeEventStatus);
+
+        // Update the flush position reported to PostgreSQL so it matches the durable checkpoint.
+        if (replicationLogClient instanceof LogicalReplicationClient && changeEventStatus.getLogSequenceNumber() != null) {
+            ((LogicalReplicationClient) replicationLogClient).updateFlushedCommitLsn(changeEventStatus.getLogSequenceNumber());
+        }
     }
 
     //VisibleForTesting
