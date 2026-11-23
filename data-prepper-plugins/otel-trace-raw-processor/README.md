@@ -14,12 +14,13 @@ processor:
 ## Configuration
 
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
-* `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to 15 seconds.
+* `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to the value of `trace_flush_interval` (180 seconds unless configured), so that child spans arriving while orphaned spans are still held can be completed with trace group information.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
 * `environment_source`: Precedence for the `attributes.derived.environment` written on SERVER spans: `platform_first` (default) uses the AWS platform (e.g. `eks:default`) before `deployment.environment.name` / `deployment.environment`; `deployment_first` uses the deployment environment first. Set the same value as on the `otel_apm_service_map` processor so spans and their service agree.
-* `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation` and `genai_coverage_cache_max_size` cannot be set.
-* `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`.
+* `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation`, `genai_root_marking` and `genai_coverage_cache_max_size` cannot be set.
+* `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`. Used only with `genai_root_marking: outermost`.
 * `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none`, written exactly so (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.
+* `genai_root_marking`: Which spans are marked `derived.gen_ai.is_root: true` as agent roots: `outermost`, `agent_spans` or `none`, written exactly so (see [Choosing how agent roots are marked](#choosing-how-agent-roots-are-marked)). Default is `outermost`.
 
 ## GenAI agent trace enrichment
 
@@ -34,6 +35,7 @@ processor:
     - otel_traces:
         disable_genai_enrichment: false
         genai_root_propagation: ai_root
+        genai_root_marking: outermost
         genai_coverage_cache_max_size: 500000
 ```
 
@@ -73,17 +75,49 @@ Agents usually run behind a service: the trace's root is an HTTP or RPC span, su
 * **Spans without their root.** Spans flushed after `trace_flush_interval` without their root are still marked, because the marker only needs the spans below it.
 * **Consumers.** List a trace's agent runs by its marked spans. For data indexed before the marker existed, fall back to root spans that are GenAI spans.
 
+#### Choosing how agent roots are marked
+
+`genai_root_marking` chooses which spans the processor marks. It is separate from `genai_root_propagation`, which chooses which roots get model and token totals copied onto them. A marker set at the source (`true`, `false` or any other value) is never changed.
+
+| Value | Spans the processor marks | When to use it |
+|---|---|---|
+| `outermost` (default) | The outermost GenAI span of each trace, as described above. | Most pipelines, and any consumer that expects one marked span per agent run. A trace whose root is a GenAI span is marked correctly whatever the arrival order. For agents behind a non-GenAI root, the result depends on which spans of a trace are in the same batch, so spans that arrive out of order can mark a second span (see the known limits below). |
+| `agent_spans` | Every span whose `gen_ai.operation.name` is `invoke_agent` or `invoke_workflow` (after [vendor attribute normalization](#vendor-attribute-normalization)). No other operation is marked. | Agents instrumented without an SDK that marks roots, when every consumer of the marker handles nested agents. The marker is decided from the span alone, so the result is the same whatever the batch split, arrival order, worker or node, and no coverage cache is kept. |
+| `none` | No span. Only markers set at the source are kept. | Applications that mark their own agent roots, for example with `mark_agent_root()` in the GenAI observability SDK for Python or `markAgentRoot()` in TypeScript. This is the most reliable option, because the application knows which span is the agent run. |
+
+With `agent_spans`:
+
+* **Nested agents are marked too.** An agent called by another agent, in process or over HTTP, is marked, so a trace can have several marked spans. Consumers must list a trace by its earliest marked span, or by its marked spans with no marked ancestor; a consumer that lists every marked span shows nested agents as separate agent runs.
+* **A trace without an agent or workflow span is not marked.** For example, a `chat` span under an HTTP root. Consumers that also list GenAI root spans still find traces whose root is a GenAI span.
+* **Token totals.** A marked span that reports no usage gets the usage of its descendants in the batch, unless it has a marked ancestor in the batch: then only the outer agent gets the total, so summing marked spans does not count a nested agent twice. When the outer agent is in another batch, the nested agent gets its own total.
+* **Markers set at the source** on one span do not stop the other agent spans from being marked.
+
+With `none`, a trace whose root is not a GenAI span and that has no marker set at the source has no marked span.
+
+Recommended settings:
+
+| Setup | `genai_root_marking` | `genai_root_propagation` |
+|---|---|---|
+| Default | `outermost` | `ai_root` |
+| The application marks agent roots, for example with the GenAI observability SDK | `none` | `ai_root` |
+| Consumers handle nested agents and sum tokens from model-call spans | `agent_spans` | `none` |
+
 #### Late spans and the coverage cache
+
+This section applies to `genai_root_marking: outermost`.
 
 Spans of a trace can arrive in several batches. A span that arrives after its agent was processed is enriched without its ancestors, so it would look outermost and be marked as a second agent run. To prevent this, the processor remembers, per trace, which span ids are already covered by a GenAI span or a marker, and checks there when a parent is not in the batch.
 
-* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (375 seconds at defaults), so they outlive the flush of spans that arrive without their root.
+* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (540 seconds at defaults), so they outlive the flush of spans that arrive without their root.
 * The cache holds at most `genai_coverage_cache_max_size` span ids across all traces. Only traces with GenAI data are stored. The `genAiCoverageSpanIdCount` metric reports how full it is, in span ids; `genAiCoverageCount` reports the number of traces.
-* Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 1,300 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
+* Size it for your GenAI span rate: it covers about `genai_coverage_cache_max_size` / (2 x `trace_flush_interval` + `trace_group_cache_ttl`) GenAI spans per second, about 900 per second at defaults. Above that, traces are evicted early and a late span can be marked again.
 * The covered-span lookup, the marking and the update run atomically per trace, so pipeline workers processing spans of one trace at the same time do not both mark one.
+* **GenAI roots.** When a trace's root is a GenAI span, or is marked `true` at the source, every other span of the trace descends from it, so only the root is marked. The processor records such a root in the cache before any of its children can be processed, so this holds whatever order the trace's spans arrive in and whichever pipeline workers process them: a child, or a nested agent that arrives before its parent, is not marked as a second agent run.
+* **Agents behind a non-GenAI root.** When the root is an HTTP or RPC span that an agent runs behind, a span is outermost when no GenAI ancestor is in its batch or the cache. A nested span that arrives before its parent agent, for example a model call before the agent span that made it, finds no GenAI ancestor and is marked as well. `genai_root_marking: agent_spans` or `none` do not depend on arrival order, if that matters for your consumers.
 
 Known limits:
 
+* Behind a non-GenAI root, a nested span that arrives before its parent agent can be marked too, as described above.
 * A span that arrives after its trace's entry expired, or was evicted, can be marked.
 * If a trace's children are flushed before a GenAI root arrives, both the root and the outermost child can end up marked. Consumers should prefer the marked span with no parent.
 * If a called service's spans are flushed after `trace_flush_interval` without the caller's spans, the called agent is marked too, and is listed as its own agent run.
@@ -121,6 +155,8 @@ In addition to the metrics from [AbstractProcessor](https://github.com/opensearc
 * `spanSetCount` - (gauge) The count of span sets in the span set collection
 * `genAiCoverageCount` - (gauge) The count of traces in the GenAI coverage cache
 * `genAiCoverageSpanIdCount` - (gauge) The count of span ids in the GenAI coverage cache, the unit of `genai_coverage_cache_max_size`
+
+The GenAI coverage cache is only used with `genai_root_marking: outermost`; with the other values both coverage gauges report `0`.
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 

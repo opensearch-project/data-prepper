@@ -134,7 +134,8 @@ class OTelTraceRawProcessorTest {
         when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
         // testGenAiEnrichmentRunsDuringDoExecute copies onto a non-GenAI root.
         when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.ALL_ROOTS);
-        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        // Mirrors the production default, where the time-to-live is the trace flush interval.
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofSeconds(TEST_TRACE_FLUSH_INTERVAL));
 
         oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
         executorService = Executors.newFixedThreadPool(TEST_CONCURRENCY_SCALE);
@@ -456,7 +457,7 @@ class OTelTraceRawProcessorTest {
         reset(config);
         when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
         when(config.getTraceGroupCacheMaxSize()).thenReturn(cacheMaxSize);
-        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofSeconds(TEST_TRACE_FLUSH_INTERVAL));
 
         oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
 
@@ -495,6 +496,41 @@ class OTelTraceRawProcessorTest {
 
         MatcherAssert.assertThat(processedRecords.size(), equalTo(expectedProcessedRecords));
         MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords), equalTo(0));
+    }
+
+    @Test
+    void test_when_rootArrivesWhileChildrenAreWaiting_then_theWholeSpanSetIsClaimedAndEmittedWithTraceGroups() {
+        final Collection<Record<Span>> childRecords = oTelTraceRawProcessor.doExecute(TEST_ONE_TRACE_GROUP_MISSING_ROOT_RECORDS);
+        MatcherAssert.assertThat(childRecords.size(), equalTo(0));
+        assertFalse(oTelTraceRawProcessor.isReadyForShutdown());
+
+        final Collection<Record<Span>> claimedRecords = oTelTraceRawProcessor.doExecute(
+                Collections.singletonList(new Record<>(TEST_TRACE_GROUP_2_ROOT_SPAN)));
+
+        MatcherAssert.assertThat(claimedRecords.size(), equalTo(3));
+        MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(claimedRecords), equalTo(0));
+        assertTrue(oTelTraceRawProcessor.isReadyForShutdown());
+    }
+
+    @Test
+    void childSpan_arriving_late_but_within_trace_flush_interval_is_emitted_immediately_with_trace_group() {
+        final Collection<Record<Span>> rootRecords = oTelTraceRawProcessor.doExecute(
+                Collections.singletonList(new Record<>(TEST_TRACE_GROUP_1_ROOT_SPAN)));
+        MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(rootRecords), equalTo(0));
+
+        waitAtLeast(1_500);
+
+        final Collection<Record<Span>> childRecords = oTelTraceRawProcessor.doExecute(
+                Collections.singletonList(new Record<>(TEST_TRACE_GROUP_1_CHILD_SPAN_1)));
+
+        MatcherAssert.assertThat(childRecords.size(), equalTo(1));
+        MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(childRecords), equalTo(0));
+    }
+
+    private static void waitAtLeast(final long delayMillis) {
+        final long startMillis = System.currentTimeMillis();
+        await().atMost(delayMillis + 5_000, TimeUnit.MILLISECONDS)
+                .until(() -> System.currentTimeMillis() - startMillis >= delayMillis);
     }
 
     @Test

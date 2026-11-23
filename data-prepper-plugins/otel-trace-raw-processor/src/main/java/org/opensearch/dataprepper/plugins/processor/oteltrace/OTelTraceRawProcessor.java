@@ -37,7 +37,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +62,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     /** Span ids covered by GenAI spans, per trace, for spans that arrive after their ancestors. */
     private final GenAiCoverage genAiCoverage;
     private final GenAiRootPropagation genAiRootPropagation;
+    private final GenAiRootMarking genAiRootMarking;
     private final boolean genAiEnrichmentEnabled;
     private final EnvironmentSource environmentSource;
 
@@ -79,20 +79,29 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                                  final PluginMetrics pluginMetrics) {
         super(pluginMetrics);
         traceFlushInterval = SEC_TO_MILLIS * otelTraceRawProcessorConfig.getTraceFlushIntervalSeconds();
+        final Duration traceGroupCacheTimeToLive = otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive();
         traceIdTraceGroupCache = Caffeine.newBuilder()
           .maximumSize(otelTraceRawProcessorConfig.getTraceGroupCacheMaxSize())
-          .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
+          .expireAfterWrite(traceGroupCacheTimeToLive.toMillis(), TimeUnit.MILLISECONDS)
           .build();
 
+        if (traceGroupCacheTimeToLive.toMillis() < traceFlushInterval) {
+            LOG.warn("The configured trace_group_cache_ttl ({} ms) is shorter than trace_flush_interval ({} ms). " +
+                    "Orphaned child spans held up to trace_flush_interval may find their trace group expired and " +
+                    "be written without trace group information.", traceGroupCacheTimeToLive.toMillis(), traceFlushInterval);
+        }
 
         environmentSource = otelTraceRawProcessorConfig.getEnvironmentSource();
         genAiEnrichmentEnabled = !otelTraceRawProcessorConfig.isGenAiEnrichmentDisabled();
         genAiRootPropagation = Objects.requireNonNullElse(
                 otelTraceRawProcessorConfig.getGenAiRootPropagation(), GenAiRootPropagation.AI_ROOT);
+        genAiRootMarking = Objects.requireNonNullElse(
+                otelTraceRawProcessorConfig.getGenAiRootMarking(), GenAiRootMarking.OUTERMOST);
         // Outlives the orphan flush: spans that arrive late are held up to two flush intervals.
-        genAiCoverage = genAiEnrichmentEnabled
+        // Only outermost marking reads earlier batches, so the other modes keep no cache.
+        genAiCoverage = genAiEnrichmentEnabled && genAiRootMarking == GenAiRootMarking.OUTERMOST
                 ? GenAiCoverage.create(otelTraceRawProcessorConfig.getGenAiCoverageCacheMaxSize(),
-                        Duration.ofMillis(2 * traceFlushInterval).plus(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive()))
+                        Duration.ofMillis(2 * traceFlushInterval).plus(traceGroupCacheTimeToLive))
                 : GenAiCoverage.NONE;
 
         pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.estimatedSize());
@@ -101,7 +110,9 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         pluginMetrics.gauge(GENAI_COVERAGE_SPAN_ID_COUNT_METRIC_NAME, genAiCoverage, coverage -> (double) coverage.spanIdCount());
 
         LOG.info("Configured Trace Raw Processor with a trace flush interval of {} ms, GenAI enrichment {}.",
-                traceFlushInterval, genAiEnrichmentEnabled ? "enabled with root propagation " + genAiRootPropagation : "disabled");
+                traceFlushInterval, genAiEnrichmentEnabled
+                        ? "enabled with root propagation " + genAiRootPropagation + " and root marking " + genAiRootMarking
+                        : "disabled");
     }
 
     /**
@@ -125,7 +136,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
         // Enrich GenAI agent traces (normalize attributes, strip conflicting sub-keys, mark agent roots, enrich roots)
         if (genAiEnrichmentEnabled) {
-            GenAiEnrichmentHelper.enrichBatch(processedSpans, genAiCoverage, genAiRootPropagation);
+            GenAiEnrichmentHelper.enrichBatch(processedSpans, genAiCoverage, genAiRootPropagation, genAiRootMarking);
         }
 
         // Derive server span attributes (fault, error, operation, environment)
@@ -146,8 +157,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
             final List<Span> rootSpanAndChildren = processRootSpan(span);
             spanSet.addAll(rootSpanAndChildren);
         } else {
-            final Optional<Span> populatedChildSpanOptional = processChildSpan(span);
-          populatedChildSpanOptional.ifPresent(spanSet::add);
+            spanSet.addAll(processChildSpan(span));
         }
     }
 
@@ -155,6 +165,15 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
      * Retrieves all child spans from memory and returns them as a set with the root span.
      * Also adds an entry to the traceID cache so that later child spans can be tagged,
      * in the case where a child span is processed AFTER the root span.
+     * The waiting children are claimed with a single atomic remove, after the trace group is
+     * cached. A child inserts itself and then re-checks the cache ({@link #processChildSpan}), so
+     * a child inserted too late for this claim finds the trace group and claims itself; the atomic
+     * remove on both sides guarantees exactly one of them emits each waiting child.
+     * With {@code outermost} marking, a root that is a GenAI span or marked at the source is recorded
+     * in the GenAI coverage cache before its trace group is cached: cover before put, and put before
+     * claim, so any child that can observe the trace group, by its first lookup or by its re-check,
+     * also observes its root and is not marked as a second agent root. A non-GenAI root is never
+     * covered, so the agent span below it is still marked.
      *
      * @param parentSpan
      * @return List containing root span, along with any child spans that have already been processed.
@@ -162,19 +181,21 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private List<Span> processRootSpan(final Span parentSpan) {
         final TraceGroup traceGroup = TraceGroup.fromSpan(parentSpan);
         final String parentSpanTraceId = parentSpan.getTraceId();
+        if (genAiEnrichmentEnabled && genAiRootMarking == GenAiRootMarking.OUTERMOST
+                && GenAiEnrichmentHelper.isGenAiOrMarkedSpan(parentSpan)) {
+            genAiCoverage.coverGenAiRoot(parentSpanTraceId, parentSpan.getSpanId());
+        }
         traceIdTraceGroupCache.put(parentSpanTraceId, traceGroup);
 
         final List<Span> recordsToFlush = new LinkedList<>();
         recordsToFlush.add(parentSpan);
 
-        final SpanSet spanSet = traceIdSpanSetMap.get(parentSpanTraceId);
-        if (spanSet != null) {
-            for (final Span span : spanSet.getSpans()) {
+        final SpanSet claimedSpanSet = traceIdSpanSetMap.remove(parentSpanTraceId);
+        if (claimedSpanSet != null) {
+            for (final Span span : claimedSpanSet.getSpans()) {
                 fillInTraceGroupInfo(span, traceGroup);
                 recordsToFlush.add(span);
             }
-
-            traceIdSpanSetMap.remove(parentSpanTraceId);
         }
 
         return recordsToFlush;
@@ -183,28 +204,48 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     /**
      * Attempts to populate the traceGroup of the child span by fetching from a cache. If the traceGroup is not in the cache,
      * the child span is kept in memory to be populated when its corresponding root span arrives.
+     * After inserting itself, the child re-checks the cache: the root may have cached the trace
+     * group and claimed the waiting spans between this child's miss and its insert, in which case
+     * nobody would ever release it. The root always caches the trace group before its claim, and
+     * the re-check always happens after the insert, so every inserted child is observed by at
+     * least one claimant; the atomic remove guarantees at most one of them emits it. A claim can
+     * include spans other workers inserted, so all claimed spans are returned.
      *
      * @param childSpan
-     * @return Optional containing childSpan if its traceGroup is in memory, otherwise an empty Optional
+     * @return the child span, and possibly other spans of its trace this call claimed, with their
+     *         trace group filled in; empty when the span stays in memory awaiting its root
      */
-    private Optional<Span> processChildSpan(final Span childSpan) {
+    private List<Span> processChildSpan(final Span childSpan) {
         final String childSpanTraceId = childSpan.getTraceId();
         final TraceGroup traceGroup = traceIdTraceGroupCache.getIfPresent(childSpanTraceId);
 
         if (traceGroup != null) {
             fillInTraceGroupInfo(childSpan, traceGroup);
-            return Optional.of(childSpan);
-        } else {
-            traceIdSpanSetMap.compute(childSpanTraceId, (traceId, spanSet) -> {
-                if (spanSet == null) {
-                    spanSet = new SpanSet();
-                }
-                spanSet.addSpan(childSpan);
-                return spanSet;
-            });
-
-            return Optional.empty();
+            return Collections.singletonList(childSpan);
         }
+
+        traceIdSpanSetMap.compute(childSpanTraceId, (traceId, spanSet) -> {
+            if (spanSet == null) {
+                spanSet = new SpanSet();
+            }
+            spanSet.addSpan(childSpan);
+            return spanSet;
+        });
+
+        final TraceGroup lateTraceGroup = traceIdTraceGroupCache.getIfPresent(childSpanTraceId);
+        if (lateTraceGroup == null) {
+            return Collections.emptyList();
+        }
+        final SpanSet claimedSpanSet = traceIdSpanSetMap.remove(childSpanTraceId);
+        if (claimedSpanSet == null) {
+            return Collections.emptyList();
+        }
+        final List<Span> claimedSpans = new LinkedList<>();
+        for (final Span claimedSpan : claimedSpanSet.getSpans()) {
+            fillInTraceGroupInfo(claimedSpan, lateTraceGroup);
+            claimedSpans.add(claimedSpan);
+        }
+        return claimedSpans;
     }
 
     /**

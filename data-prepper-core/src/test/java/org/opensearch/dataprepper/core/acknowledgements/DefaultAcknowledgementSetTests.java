@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -34,6 +35,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -294,6 +296,19 @@ class DefaultAcknowledgementSetTests {
         objectUnderTest.increaseExpiry(Duration.ofSeconds(10));
 
         assertThat(objectUnderTest.getExpirationTime().isAfter(nowPlusEightSeconds), equalTo(true));
+    }
+
+    @Test
+    void addProgressCheck_waits_one_interval_before_the_first_check() {
+        setupMetrics();
+        final ScheduledExecutorService scheduledExecutor = mock(ScheduledExecutorService.class);
+        final AcknowledgementSet objectUnderTest = new DefaultAcknowledgementSet(scheduledExecutor, (flag) -> {}, TEST_TIMEOUT, metrics);
+        final Duration progressCheckInterval = Duration.ofMinutes(2);
+
+        objectUnderTest.addProgressCheck((progressCheck) -> {}, progressCheckInterval);
+
+        verify(scheduledExecutor).scheduleAtFixedRate(any(Runnable.class), eq(progressCheckInterval.toMillis()),
+                eq(progressCheckInterval.toMillis()), eq(TimeUnit.MILLISECONDS));
     }
 
     @Test

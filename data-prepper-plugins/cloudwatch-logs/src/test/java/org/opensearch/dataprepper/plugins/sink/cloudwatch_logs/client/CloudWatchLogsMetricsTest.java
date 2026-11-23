@@ -91,6 +91,10 @@ class CloudWatchLogsMetricsTest {
                         (Consumer<CloudWatchLogsMetrics>) m -> m.increaseResourceNotFoundCounter(1), 1),
                 Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_THROTTLED,
                         (Consumer<CloudWatchLogsMetrics>) m -> m.increaseThrottledCounter(1), 1),
+                Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_INVALID_REQUEST,
+                        (Consumer<CloudWatchLogsMetrics>) m -> m.increaseInvalidRequestCounter(1), 1),
+                Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_UNCLASSIFIED_FAILURES,
+                        (Consumer<CloudWatchLogsMetrics>) m -> m.increaseUnclassifiedFailuresCounter(1), 1),
                 Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_GROUPS_CREATED,
                         (Consumer<CloudWatchLogsMetrics>) m -> m.increaseEntityGroupsCreatedCounter(1), 1),
                 Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_OVERFLOW_EVENTS,
@@ -120,6 +124,8 @@ class CloudWatchLogsMetricsTest {
                         (Consumer<CloudWatchLogsMetrics>) m -> m.recordStagedAgeAtDelivery(1234L), 1234.0),
                 Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUEST_SIZE,
                         (Consumer<CloudWatchLogsMetrics>) m -> m.recordRequestSize(100), 100.0),
+                Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_DELIVERED_BYTES,
+                        (Consumer<CloudWatchLogsMetrics>) m -> m.recordDeliveredBytes(75L), 75.0),
                 Arguments.of(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_LOG_SIZE,
                         (Consumer<CloudWatchLogsMetrics>) m -> m.recordLogSize(50), 50.0));
     }

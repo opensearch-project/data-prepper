@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -300,6 +301,22 @@ class GenAiAgentRootTest {
         final List<Span> out = flushed.stream().map(Record::getData).collect(Collectors.toList());
         assertEquals(List.of("agent"), markedSpanIds(out));
         assertFalse(byId(out, "http").getAttributes().containsKey(DERIVED_GEN_AI_IS_ROOT_KEY));
+    }
+
+    @Test
+    void marksTheAgentSpanThroughTheProcessorWhenANonGenAiRootArrivesFirst() {
+        // A non-GenAI root is not recorded as covered, so the agent below it is still outermost.
+        final OTelTraceRawProcessor processor = processor(true, GenAiRootPropagation.AI_ROOT, mock(PluginMetrics.class));
+
+        final List<Span> rootBatch = execute(processor, List.of(
+                span("http", "", "2026-01-01T00:00:00Z", Map.of("http.method", "POST"))));
+        final List<Span> agentBatch = execute(processor, List.of(
+                span("agent", "http", "2026-01-01T00:00:01Z", Map.of(
+                        "gen_ai.operation.name", "invoke_agent", "gen_ai.agent.name", "Travel Planner"))));
+
+        assertEquals(List.of("http"), rootBatch.stream().map(Span::getSpanId).collect(Collectors.toList()));
+        assertEquals(List.of(), markedSpanIds(rootBatch));
+        assertEquals(List.of("agent"), markedSpanIds(agentBatch));
     }
 
     private static List<Span> crossServiceTrace() {
@@ -646,7 +663,7 @@ class GenAiAgentRootTest {
         when(config.isGenAiEnrichmentDisabled()).thenReturn(!enrichmentEnabled);
         when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
         when(config.getGenAiRootPropagation()).thenReturn(propagation);
-        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofSeconds(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC));
         return new OTelTraceRawProcessor(config, mock(PipelineDescription.class), pluginMetrics);
     }
 

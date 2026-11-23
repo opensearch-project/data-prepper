@@ -53,6 +53,10 @@ class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration,
     @JsonProperty("sts_role_arn")
     private String stsRoleArn;
 
+    @JsonProperty("sts_header_overrides")
+    @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
+    private Map<String, String> stsHeaderOverrides;
+
     @Valid
     @JsonProperty("rotation_interval")
     @DurationMin(hours = 2L, message = "Rotation interval must be at least 2 hours.")
@@ -89,6 +93,7 @@ class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration,
         return AwsCredentialsOptions.builder()
                 .withRegion(region)
                 .withStsRoleArn(stsRoleArn)
+                .withStsHeaderOverrides(stsHeaderOverrides)
                 .build();
     }
 

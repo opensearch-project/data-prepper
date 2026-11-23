@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -32,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OtelTraceRawProcessorConfigTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private static OtelTraceRawProcessorConfig deserialize(final Map<String, Object> settings) {
         return OBJECT_MAPPER.convertValue(settings, OtelTraceRawProcessorConfig.class);
@@ -43,7 +46,8 @@ class OtelTraceRawProcessorConfigTest {
         final OtelTraceRawProcessorConfig config = new OtelTraceRawProcessorConfig();
 
         assertThat(config.getTraceFlushIntervalSeconds(), equalTo(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC));
-        assertThat(config.getTraceGroupCacheTimeToLive(), equalTo(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL));
+        assertThat(config.getTraceGroupCacheTimeToLive(),
+                equalTo(Duration.ofSeconds(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC)));
         assertThat(config.getTraceGroupCacheMaxSize(), equalTo(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE));
         assertThat(config.isGenAiEnrichmentDisabled(), is(false));
         assertThat(config.getGenAiCoverageCacheMaxSize(), equalTo(500_000L));
@@ -61,6 +65,32 @@ class OtelTraceRawProcessorConfigTest {
     }
 
     @Test
+    void getTraceGroupCacheTimeToLive_whenUnset_defaultsToTheTraceFlushInterval() {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of());
+
+        assertThat(config.getTraceGroupCacheTimeToLive(),
+                equalTo(Duration.ofSeconds(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC)));
+    }
+
+    @Test
+    void getTraceGroupCacheTimeToLive_whenUnset_defaultsToACustomizedTraceFlushInterval() {
+        final long traceFlushIntervalSeconds = ThreadLocalRandom.current().nextLong(1, 10_000);
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of("trace_flush_interval", traceFlushIntervalSeconds));
+
+        assertThat(config.getTraceGroupCacheTimeToLive(), equalTo(Duration.ofSeconds(traceFlushIntervalSeconds)));
+    }
+
+    @Test
+    void getTraceGroupCacheTimeToLive_whenConfigured_returnsTheConfiguredValue() {
+        final long traceGroupCacheTimeToLiveSeconds = ThreadLocalRandom.current().nextLong(1, 10_000);
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of(
+                "trace_flush_interval", 300,
+                "trace_group_cache_ttl", Duration.ofSeconds(traceGroupCacheTimeToLiveSeconds).toString()));
+
+        assertThat(config.getTraceGroupCacheTimeToLive(), equalTo(Duration.ofSeconds(traceGroupCacheTimeToLiveSeconds)));
+    }
+
+    @Test
     void deserialize_disableGenAiEnrichmentTrue_disablesEnrichment() {
         final OtelTraceRawProcessorConfig config = deserialize(Map.of("disable_genai_enrichment", true));
 
@@ -72,6 +102,8 @@ class OtelTraceRawProcessorConfigTest {
     @CsvSource({
             "genai_root_propagation, ai_root",
             "genai_root_propagation, none",
+            "genai_root_marking, outermost",
+            "genai_root_marking, none",
             "genai_coverage_cache_max_size, 1000"
     })
     void isGenAiSettingsValid_whenAGenAiSettingIsSetWithEnrichmentDisabled_isFalse(final String setting, final String value) {
@@ -116,6 +148,34 @@ class OtelTraceRawProcessorConfigTest {
     @ValueSource(strings = {"ALL_ROOTS", "None", "Ai_Root"})
     void deserialize_genAiRootPropagationInADifferentCase_fails(final String option) {
         assertThrows(IllegalArgumentException.class, () -> deserialize(Map.of("genai_root_propagation", option)));
+    }
+
+    @Test
+    void getGenAiRootMarking_whenNotSet_isOutermost() {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of());
+
+        assertThat(config.getGenAiRootMarking(), equalTo(GenAiRootMarking.OUTERMOST));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "outermost, OUTERMOST",
+            "agent_spans, AGENT_SPANS",
+            "none, NONE"
+    })
+    void deserialize_genAiRootMarking_readsEachOption(final String option, final GenAiRootMarking expected) {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of("genai_root_marking", option));
+
+        assertThat(config.getGenAiRootMarking(), equalTo(expected));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"AGENT_SPANS", "Outermost", "agent-spans", "all"})
+    void deserialize_genAiRootMarkingNotWrittenExactly_failsWithTheAllowedValues(final String option) {
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> deserialize(Map.of("genai_root_marking", option)));
+
+        assertThat(exception.getMessage(), containsString("outermost, agent_spans, none"));
     }
 
     @Test

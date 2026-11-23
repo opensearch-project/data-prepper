@@ -25,10 +25,6 @@ import java.util.ArrayList;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A model representing DLQ objects in Data Prepper
@@ -36,7 +32,6 @@ import org.slf4j.LoggerFactory;
  * @since 2.2
  */
 public class DlqObject {
-    private static final Logger LOG = LoggerFactory.getLogger(DlqObject.class);
     private static final String ISO8601_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(ISO8601_FORMAT_STRING)
             .withZone(ZoneId.systemDefault());;
@@ -107,24 +102,23 @@ public class DlqObject {
         return eventHandles;
     }
 
-    public void releaseEventHandle(boolean result) {
+    public void releaseEventHandle(final boolean result) {
         if (event != null) {
-            // This should not happen. DLQ objects with event should be sent to DLQ pipeline and should not be released.
-            LOG.warn(NOISY, "Attempted to release DLQObject with event");
+            event.getEventHandle().release(result);
         } else if (eventHandles != null && eventHandles.size() == 1) {
             eventHandles.get(0).release(result);
         }
     }
 
-    public void releaseEventHandles(boolean result) {
-        if (eventHandles == null) {
-            if (event != null) {
-                // This should not happen. DLQ objects with event should be sent to DLQ pipeline and should not be released.
-                LOG.warn(NOISY, "Attempted to release DLQObject with event");
-            }
+    public void releaseEventHandles(final boolean result) {
+        if (event != null) {
+            event.getEventHandle().release(result);
             return;
         }
-        for (final EventHandle eventHandle: eventHandles) {
+        if (eventHandles == null) {
+            return;
+        }
+        for (final EventHandle eventHandle : eventHandles) {
             eventHandle.release(result);
         }
     }

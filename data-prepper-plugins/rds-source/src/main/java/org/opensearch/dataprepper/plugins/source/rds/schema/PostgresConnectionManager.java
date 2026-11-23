@@ -22,7 +22,7 @@ import java.util.Properties;
 public class PostgresConnectionManager implements ConnectionManager {
     private static final Logger LOG = LoggerFactory.getLogger(PostgresConnectionManager.class);
 
-    public static final String JDBC_URL_FORMAT = "jdbc:postgresql://%s:%d/%s";
+    public static final String JDBC_URL_FORMAT = "jdbc:postgresql://%s:%d/";
     public static final String SERVER_VERSION_9_4 = "9.4";
     public static final String DATABASE_REPLICATION = "database";
     public static final String SIMPLE_QUERY = "simple";
@@ -56,6 +56,7 @@ public class PostgresConnectionManager implements ConnectionManager {
         PGProperty.ASSUME_MIN_SERVER_VERSION.set(props, SERVER_VERSION_9_4);  // This is required
         PGProperty.REPLICATION.set(props, DATABASE_REPLICATION);   // This is also required
         PGProperty.PREFER_QUERY_MODE.set(props, SIMPLE_QUERY);
+        PGProperty.PG_DBNAME.set(props, database);
 
         if (requireSSL) {
             PGProperty.SSL.set(props, TRUE_VALUE);
@@ -64,7 +65,7 @@ public class PostgresConnectionManager implements ConnectionManager {
             PGProperty.SSL.set(props, FALSE_VALUE);
         }
 
-        final String jdbcUrl = String.format(JDBC_URL_FORMAT, this.endpoint, this.port, this.database);
+        final String jdbcUrl = String.format(JDBC_URL_FORMAT, this.endpoint, this.port);
         LOG.debug("Connecting to JDBC URL: {}", jdbcUrl);
         return doGetConnection(jdbcUrl, props);
     }
