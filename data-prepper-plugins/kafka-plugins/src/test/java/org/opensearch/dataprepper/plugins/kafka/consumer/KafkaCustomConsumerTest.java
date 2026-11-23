@@ -493,6 +493,59 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
+    public void testAcknowledgementsCommitPastOffsetsNeverDelivered() throws Exception {
+        // Offsets 2-4 are never delivered (e.g. transaction control records or compacted away).
+        // Offset 2 is skipped within the first poll, offsets 3-4 between the two polls.
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(kafkaConsumer.poll(any(Duration.class)))
+                .thenReturn(createPlainTextRecords(topic, 0L))
+                .thenReturn(createPlainTextRecords(topic, 5L));
+        when(kafkaConsumer.position(topicPartition)).thenReturn(3L, 7L);
+        consumer = createObjectUnderTest("plaintext", true);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.consumeRecords();
+        consumer.consumeRecords();
+
+        final ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(buffer.read(1000).getKey());
+        assertEquals(4, bufferedRecords.size());
+        bufferedRecords.forEach(record -> record.getData().getEventHandle().release(true));
+        await().atMost(delayTime.plusMillis(5000))
+                .until(() -> consumer.getTopicMetrics().getNumberOfPositiveAcknowledgements().count() == 2.0);
+
+        consumer.processAcknowledgedOffsets();
+        final Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        assertEquals(1, offsetsToCommit.size());
+        assertEquals(7L, offsetsToCommit.get(topicPartition).offset());
+    }
+
+    @Test
+    public void testAcknowledgementsDoNotCommitPastUnacknowledgedPoll() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition topicPartition = new TopicPartition(topic, testPartition);
+        when(kafkaConsumer.poll(any(Duration.class)))
+                .thenReturn(createPlainTextRecords(topic, 0L))
+                .thenReturn(createPlainTextRecords(topic, 5L));
+        when(kafkaConsumer.position(topicPartition)).thenReturn(3L, 7L);
+        consumer = createObjectUnderTest("plaintext", true);
+
+        consumer.onPartitionsAssigned(List.of(topicPartition));
+        consumer.consumeRecords();
+        consumer.consumeRecords();
+
+        final ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(buffer.read(1000).getKey());
+        assertEquals(4, bufferedRecords.size());
+        // Acknowledge only the second poll (offsets 5 and 6).
+        bufferedRecords.subList(2, 4).forEach(record -> record.getData().getEventHandle().release(true));
+        await().atMost(delayTime.plusMillis(5000))
+                .until(() -> consumer.getTopicMetrics().getNumberOfPositiveAcknowledgements().count() == 1.0);
+
+        consumer.processAcknowledgedOffsets();
+        assertEquals(0, consumer.getOffsetsToCommit().size());
+    }
+
+    @Test
     public void testPlainTextConsumeRecordsWithNegativeAcknowledgements() throws InterruptedException {
         String topic = topicConfig.getName();
         consumerRecords = createPlainTextRecords(topic, 0L);

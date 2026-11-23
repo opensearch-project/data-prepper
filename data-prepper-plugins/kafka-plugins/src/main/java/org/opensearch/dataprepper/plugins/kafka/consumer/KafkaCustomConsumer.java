@@ -94,6 +94,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private Set<TopicPartition> partitionsToReset;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Map<Integer, TopicPartitionCommitTracker> partitionCommitTrackerMap;
+    // Next offset expected from poll() for each partition. Only used by the consumer thread.
+    private final Map<TopicPartition, Long> nextExpectedOffsets;
     private List<Map<TopicPartition, CommitOffsetRange>> acknowledgedOffsets;
     private final boolean acknowledgementsEnabled;
     private final Duration acknowledgementsTimeout;
@@ -142,6 +144,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.acknowledgementsEnabled = consumerConfig.getAcknowledgementsEnabled();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.partitionCommitTrackerMap = new HashMap<>();
+        this.nextExpectedOffsets = new HashMap<>();
         this.partitionsToReset = Collections.synchronizedSet(new HashSet<>());
         this.schema = MessageFormat.getByMessageFormatByName(schemaType);
         this.lastCommitTime = System.currentTimeMillis();
@@ -271,12 +274,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 consumer.seek(e.topicPartition(), e.offset() + 1);
 
                 // Update failed record offset in commitTracker because we are not
-                // processing it and seeking past the error record.
+                // processing it and seeking past the error record. Offsets skipped
+                // before the error record (never delivered) are included as well.
                 // Note: partitionCommitTrackerMap may not have the partition if this is
                 // ths first set of records that hit deserialization error
+                final Long expectedOffset = nextExpectedOffsets.get(e.topicPartition());
+                final long skippedStart = (expectedOffset != null && expectedOffset <= e.offset()) ? expectedOffset : e.offset();
                 if (acknowledgementsEnabled && partitionCommitTrackerMap.containsKey(e.topicPartition().partition())) {
-                    addAcknowledgedOffsets(e.topicPartition(), Range.of(e.offset(), e.offset()));
+                    addAcknowledgedOffsets(e.topicPartition(), Range.of(skippedStart, e.offset()));
                 }
+                nextExpectedOffsets.put(e.topicPartition(), e.offset() + 1);
             }
 
             topicMetrics.getNumberOfDeserializationErrors().increment();
@@ -324,6 +331,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                         consumer.seek(partition, offsetAndMetadata);
                     }
                     partitionCommitTrackerMap.remove(partition.partition());
+                    nextExpectedOffsets.remove(partition);
                     final long epoch = getCurrentTimeNanos();
                     ownedPartitionsEpoch.put(partition, epoch);
                 } catch (Exception e) {
@@ -603,16 +611,42 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             processRecords(acknowledgementSet, eventRecords);
 
-            long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
-            long firstOffset = partitionRecords.get(0).offset();
-            Range<Long> offsetRange = Range.between(firstOffset, lastOffset);
+            final Range<Long> offsetRange = getPolledOffsetRange(topicPartition, partitionRecords);
             offsets.put(topicPartition, new CommitOffsetRange(offsetRange, partitionEpoch));
 
             if (acknowledgementsEnabled && !partitionCommitTrackerMap.containsKey(topicPartition.partition())) {
                 partitionCommitTrackerMap.put(topicPartition.partition(),
-                        new TopicPartitionCommitTracker(topicPartition, firstOffset));
+                        new TopicPartitionCommitTracker(topicPartition, offsetRange.getMinimum()));
             }
         }
+    }
+
+    /**
+     * Returns the offset range covered by the records polled for a partition.
+     * <p>
+     * Offsets that are never delivered as records (removed by log compaction, or used by
+     * transaction control records) are included in the range of the poll that skipped them:
+     * the range starts right after the previous poll's range and ends at the consumer position
+     * minus one. Without this, such offsets leave gaps that {@link TopicPartitionCommitTracker}
+     * can never close, and commits for the partition stop.
+     */
+    private <T> Range<Long> getPolledOffsetRange(final TopicPartition topicPartition,
+                                                 final List<ConsumerRecord<String, T>> partitionRecords) {
+        final long firstOffset = partitionRecords.get(0).offset();
+        final long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
+
+        final Long expectedOffset = nextExpectedOffsets.get(topicPartition);
+        final long rangeStart = (expectedOffset != null && expectedOffset <= firstOffset) ? expectedOffset : firstOffset;
+
+        long rangeEnd = lastOffset;
+        try {
+            rangeEnd = Math.max(lastOffset, consumer.position(topicPartition) - 1);
+        } catch (final Exception e) {
+            LOG.debug("Unable to get position for partition {}, using last record offset", topicPartition, e);
+        }
+
+        nextExpectedOffsets.put(topicPartition, rangeEnd + 1);
+        return Range.between(rangeStart, rangeEnd);
     }
 
     public void closeConsumer(){
@@ -638,6 +672,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 }
                 LOG.info("Assigned partition {}", topicPartition);
                 ownedPartitionsEpoch.put(topicPartition, epoch);
+                nextExpectedOffsets.remove(topicPartition);
             }
             if (paused) {
                 consumer.pause(consumer.assignment());
@@ -659,6 +694,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 LOG.info("Revoked partition {}", topicPartition);
                 ownedPartitionsEpoch.remove(topicPartition);
                 partitionCommitTrackerMap.remove(topicPartition.partition());
+                nextExpectedOffsets.remove(topicPartition);
                 topicMetrics.clearPartitionLag(topicPartition.partition());
             }
             if (paused) {
