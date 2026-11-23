@@ -172,8 +172,8 @@ public class CreateServerTest {
         Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
 
         assertNotNull(server);
-        assertDoesNotThrow(() -> server.start());
-        assertDoesNotThrow(() -> server.stop());
+        assertDoesNotThrow(() -> server.start().join());
+        assertDoesNotThrow(() -> server.stop().join());
     }
 
     @Test
@@ -199,8 +199,8 @@ public class CreateServerTest {
         Server server = createServer.createGRPCServer(authenticationProvider, serviceConfigs, certificateProvider);
 
         assertNotNull(server);
-        assertDoesNotThrow(() -> server.start());
-        assertDoesNotThrow(() -> server.stop());
+        assertDoesNotThrow(() -> server.start().join());
+        assertDoesNotThrow(() -> server.stop().join());
     }
 
     @Test
@@ -227,7 +227,7 @@ public class CreateServerTest {
         Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
 
         assertNotNull(server);
-        assertDoesNotThrow(() -> server.start());
+        assertDoesNotThrow(() -> server.start().join());
 
         WebClient webClient = WebClient.builder(
                 String.format("http://127.0.0.1:%d", serverConfiguration.getPort())).build();
@@ -235,7 +235,7 @@ public class CreateServerTest {
 
         verify(mockLogger).info("Ensure Custom Auth Decorator is working");
 
-        assertDoesNotThrow(() -> server.stop());
+        assertDoesNotThrow(() -> server.stop().join());
     }
 
     @Test
@@ -331,8 +331,8 @@ public class CreateServerTest {
         Server server = createServer.createHTTPServer(buffer, certificateProviderFactory, armeriaAuthenticationProvider,
                 httpRequestExceptionHandler, logService);
         assertNotNull(server);
-        assertDoesNotThrow(() -> server.start());
-        assertDoesNotThrow(() -> server.stop());
+        assertDoesNotThrow(() -> server.start().join());
+        assertDoesNotThrow(() -> server.stop().join());
     }
 
     private Server createGrpcServerWithCircuitBreaker(final boolean healthCheck) throws JsonProcessingException {
