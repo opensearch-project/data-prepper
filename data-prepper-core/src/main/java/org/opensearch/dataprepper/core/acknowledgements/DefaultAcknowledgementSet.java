@@ -74,7 +74,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
 
     public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval) {
         this.progressCheckCallback = progressCheckCallback;
-        this.progressCheckFuture = scheduledExecutor.scheduleAtFixedRate(this::checkProgress, 0L, progressCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
+        this.progressCheckFuture = scheduledExecutor.scheduleAtFixedRate(this::checkProgress, progressCheckInterval.toMillis(), progressCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
     }
 
     @Override

@@ -47,6 +47,8 @@
 
 ### Security
 
+* Pass the PostgreSQL database name as a driver property in the RDS source to prevent a pipeline author from injecting connection string parameters that could exfiltrate database credentials. Fixes [GHSA-h88q-pr3p-23cj](https://github.com/opensearch-project/data-prepper/security/advisories/GHSA-h88q-pr3p-23cj). ([#7255](https://github.com/opensearch-project/data-prepper/pull/7255))
+* Bypass class name resolution in Glue Schema Registry JSON deserialization to prevent unvalidated class loading. Fixes [GHSA-c5wf-7mjx-mcx6](https://github.com/opensearch-project/data-prepper/security/advisories/GHSA-c5wf-7mjx-mcx6). ([#7256](https://github.com/opensearch-project/data-prepper/pull/7256))
 * CVE-2026-59890 - setuptools 83 ([#7009](https://github.com/opensearch-project/data-prepper/pull/7009))
 * CVE-2026-102598 - werkzeug 3.1.9 ([#7176](https://github.com/opensearch-project/data-prepper/pull/7176))
 

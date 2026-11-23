@@ -50,7 +50,7 @@ pipeline {
         stage('Get release paramters') {
             agent {
                 docker {
-                    label 'Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host'
+                    label 'Jenkins-Agent-AL2023-X64-M54xlarge-Docker-Host'
                     image 'opensearchstaging/ci-runner:ci-runner-centos7-opensearch-build-v3'
                     args '-e JAVA_HOME=/opt/java/openjdk-11'
                     registryUrl 'https://public.ecr.aws/'
@@ -100,7 +100,7 @@ pipeline {
         stage('Promote Archives') {
             agent {
                 docker {
-                    label 'Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host'
+                    label 'Jenkins-Agent-AL2023-X64-M54xlarge-Docker-Host'
                     image 'opensearchstaging/ci-runner:ci-runner-centos7-opensearch-build-v3'
                     args '-e JAVA_HOME=/opt/java/openjdk-11'
                     registryUrl 'https://public.ecr.aws/'
@@ -150,7 +150,7 @@ pipeline {
         stage('Promote Docker') {
             agent {
                 docker {
-                    label 'Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host'
+                    label 'Jenkins-Agent-AL2023-X64-M54xlarge-Docker-Host'
                     image 'docker/library/alpine:3'
                     registryUrl 'https://public.ecr.aws/'
                     alwaysPull true
@@ -247,7 +247,7 @@ pipeline {
         stage('Promote Maven') {
             agent {
                 docker {
-                    label 'Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host'
+                    label 'Jenkins-Agent-AL2023-X64-M54xlarge-Docker-Host'
                     image 'opensearchstaging/ci-runner:ci-runner-centos7-opensearch-build-v3'
                     args '-e JAVA_HOME=/opt/java/openjdk-11'
                     registryUrl 'https://public.ecr.aws/'
@@ -291,7 +291,7 @@ pipeline {
     }
     post {
         success {
-            node('Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host') {
+            node('Jenkins-Agent-AL2023-X64-M54xlarge-Docker-Host') {
                 script {
                     // The OpenSearch project no longer supports bot tokens with write access
                     // to publish releases automatically. Instead, open an issue asking
@@ -309,7 +309,7 @@ pipeline {
             }
         }
         failure {
-            node('Jenkins-Agent-AL2-X64-C54xlarge-Docker-Host') {
+            node('Jenkins-Agent-AL2023-X64-M54xlarge-Docker-Host') {
                 script {
                     // Notify maintainers so a broken release pipeline is not missed.
                     withSecrets(secrets: secret_github_bot) {

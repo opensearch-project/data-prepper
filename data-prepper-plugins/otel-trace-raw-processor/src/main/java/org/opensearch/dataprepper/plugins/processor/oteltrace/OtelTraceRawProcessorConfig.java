@@ -24,7 +24,6 @@ import java.time.Duration;
         "span records by state caching the root span information for each <code>traceId</code>.")
 public class OtelTraceRawProcessorConfig {
     static final long DEFAULT_TG_FLUSH_INTERVAL_SEC = 180L;
-    static final Duration DEFAULT_TRACE_ID_TTL = Duration.ofSeconds(15L);
     static final long MAX_TRACE_ID_CACHE_SIZE = 1_000_000L;
     static final long DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE = 500_000L;
 
@@ -33,11 +32,12 @@ public class OtelTraceRawProcessorConfig {
             "root span. Default is <code>180</code>.")
     private long traceFlushInterval = DEFAULT_TG_FLUSH_INTERVAL_SEC;
 
-    @JsonProperty(value = "trace_group_cache_ttl", defaultValue = "PT15S")
+    @JsonProperty(value = "trace_group_cache_ttl", defaultValue = "PT180S")
     @JsonPropertyDescription("Represents the time-to-live to cache a trace group details. " +
             "The value may be an ISO 8601 notation such as <code>PT1M30S</code> or a duration and unit such as <code>45s</code>. " +
-            "Default is 15 seconds.")
-    private Duration traceGroupCacheTimeToLive = DEFAULT_TRACE_ID_TTL;
+            "Defaults to the value of <code>trace_flush_interval</code> (180 seconds unless configured), so that child spans " +
+            "arriving while orphaned spans are still held can be completed with trace group information.")
+    private Duration traceGroupCacheTimeToLive;
 
     @JsonProperty(value = "trace_group_cache_max_size", defaultValue = "1000000")
     @JsonPropertyDescription("Represents the maximum size of the cache to store the trace group details from root spans. " +
@@ -71,7 +71,7 @@ public class OtelTraceRawProcessorConfig {
     }
 
     public Duration getTraceGroupCacheTimeToLive() {
-        return traceGroupCacheTimeToLive;
+        return traceGroupCacheTimeToLive != null ? traceGroupCacheTimeToLive : Duration.ofSeconds(traceFlushInterval);
     }
 
     public long getTraceGroupCacheMaxSize() {
