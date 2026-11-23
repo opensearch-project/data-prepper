@@ -116,16 +116,23 @@ final class GenAiEnrichmentHelper {
                 enrichTraceWithoutCoverage(index, propagation, marking);
                 continue;
             }
+            final SpanInfo root = index.root();
+            final boolean genAiRootInBatch = root != null && (root.genAi || Boolean.TRUE.equals(root.marker));
             // Read, mark and record under the trace's lock: spans of one trace can be in batches
             // that pipeline workers process at the same time.
-            coverage.update(trace.getKey(), known -> enrichTrace(index, known, propagation));
+            coverage.update(trace.getKey(), genAiRootInBatch,
+                    (known, genAiRootSeen) -> enrichTrace(index, known, genAiRootSeen, propagation));
         }
     }
 
-    /** Enriches one trace and returns the span ids it covers, for later batches of the trace. */
-    private static Set<String> enrichTrace(final TraceIndex index, final Set<String> known,
+    /**
+     * Enriches one trace and returns the span ids it covers, for later batches of the trace. When
+     * the trace's root is a GenAI span or marked at the source, in this batch or an earlier one,
+     * every other span descends from it, so only the root can be outermost.
+     */
+    private static Set<String> enrichTrace(final TraceIndex index, final Set<String> known, final boolean genAiRootSeen,
                                            final GenAiRootPropagation propagation) {
-        final List<SpanInfo> outermost = index.outermostGenAiSpans(known);
+        final List<SpanInfo> outermost = genAiRootSeen ? index.genAiRoot() : index.outermostGenAiSpans(known);
         // Root first: it sums the spans' own tokens, before marking adds aggregates to agent roots.
         final SpanInfo root = index.root();
         if (root != null && index.size() > 1 && propagatesTo(root, propagation)) {
@@ -286,6 +293,12 @@ final class GenAiEnrichmentHelper {
                 }
             }
             return null;
+        }
+
+        /** The batch's root when it is a GenAI span, the only outermost span of a trace with a GenAI root. */
+        private List<SpanInfo> genAiRoot() {
+            final SpanInfo root = root();
+            return root != null && root.genAi ? List.of(root) : List.of();
         }
 
         private boolean hasSourceMarker() {
@@ -475,6 +488,19 @@ final class GenAiEnrichmentHelper {
                 LOG.debug("Aggregated tokens (input={}, output={}) to root span {}", tokens.input, tokens.output, root.spanId());
             }
         }
+    }
+
+    /**
+     * Whether a span is itself a GenAI span or is marked {@code true} at the source, the spans that
+     * are covered on their own. Reads the attributes as they arrived, before vendor normalization.
+     */
+    static boolean isGenAiOrMarkedSpan(final Span span) {
+        final Map<String, Object> attributes = span.getAttributes();
+        if (attributes == null) {
+            return false;
+        }
+        return attributes.get(GEN_AI_OPERATION_NAME_KEY) != null
+                || Boolean.TRUE.equals(toBoolean(attributes.get(DERIVED_GEN_AI_IS_ROOT_KEY)));
     }
 
     /** A token count from a number or a numeric string; anything else is treated as absent. */

@@ -34,8 +34,10 @@ import java.util.stream.Collectors;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.processor.oteltrace.GenAiEnrichmentHelper.DERIVED_GEN_AI_IS_ROOT_KEY;
 
 /**
  * A root and a child of one trace processed by two workers at the same time must both be emitted
@@ -46,6 +48,7 @@ import static org.mockito.Mockito.when;
 class OTelTraceRawProcessorConcurrencyTest {
 
     private static final int ITERATIONS = 200;
+    private static final int GENAI_ITERATIONS = 500;
 
     @Test
     void test_when_rootAndChildAreProcessedConcurrently_then_everySpanIsEmittedExactlyOnceWithItsTraceGroup() throws Exception {
@@ -91,6 +94,80 @@ class OTelTraceRawProcessorConcurrencyTest {
         }
 
         assertThat(processor.isReadyForShutdown(), is(true));
+    }
+
+    @Test
+    void test_when_aGenAiRootAndItsChildAreProcessedConcurrentlyWithOutermostMarking_then_onlyTheRootIsMarked()
+            throws Exception {
+        final OTelTraceRawProcessor processor = createGenAiProcessor(GenAiRootMarking.OUTERMOST);
+        final ExecutorService executorService = Executors.newFixedThreadPool(2);
+        try {
+            for (int iteration = 0; iteration < GENAI_ITERATIONS; iteration++) {
+                final String traceId = "genai-race-trace-" + iteration;
+                final String rootSpanId = "root-" + iteration;
+                final String childSpanId = "chat-" + iteration;
+                final Span rootSpan = genAiSpan(traceId, rootSpanId, "", Map.of("gen_ai.operation.name", "invoke_agent"));
+                final Span childSpan = genAiSpan(traceId, childSpanId, rootSpanId, Map.of(
+                        "gen_ai.operation.name", "chat",
+                        "gen_ai.request.model", "gpt-4o",
+                        "gen_ai.usage.input_tokens", 12L,
+                        "gen_ai.usage.output_tokens", 5L));
+
+                final CountDownLatch startLatch = new CountDownLatch(1);
+                final Future<Collection<Record<Span>>> rootFuture = executorService.submit(() -> {
+                    startLatch.await();
+                    return processor.doExecute(List.of(new Record<>(rootSpan)));
+                });
+                final Future<Collection<Record<Span>>> childFuture = executorService.submit(() -> {
+                    startLatch.await();
+                    return processor.doExecute(List.of(new Record<>(childSpan)));
+                });
+                startLatch.countDown();
+
+                final List<Span> emittedSpans = new ArrayList<>();
+                rootFuture.get(10, TimeUnit.SECONDS).forEach(record -> emittedSpans.add(record.getData()));
+                childFuture.get(10, TimeUnit.SECONDS).forEach(record -> emittedSpans.add(record.getData()));
+
+                final List<String> emittedSpanIds = emittedSpans.stream()
+                        .map(Span::getSpanId)
+                        .sorted()
+                        .collect(Collectors.toList());
+                assertThat("iteration " + iteration, emittedSpanIds, equalTo(List.of(childSpanId, rootSpanId)));
+                assertThat("iteration " + iteration + " child marked",
+                        byId(emittedSpans, childSpanId).getAttributes().get(DERIVED_GEN_AI_IS_ROOT_KEY), nullValue());
+                assertThat("iteration " + iteration + " root marked",
+                        byId(emittedSpans, rootSpanId).getAttributes().get(DERIVED_GEN_AI_IS_ROOT_KEY), equalTo(true));
+            }
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        assertThat(processor.isReadyForShutdown(), is(true));
+    }
+
+    private static OTelTraceRawProcessor createGenAiProcessor(final GenAiRootMarking marking) {
+        final OtelTraceRawProcessorConfig config = mock(OtelTraceRawProcessorConfig.class);
+        when(config.getTraceFlushIntervalSeconds()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC);
+        when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofSeconds(OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC));
+        when(config.isGenAiEnrichmentDisabled()).thenReturn(false);
+        when(config.getGenAiCoverageCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE);
+        when(config.getGenAiRootPropagation()).thenReturn(GenAiRootPropagation.AI_ROOT);
+        when(config.getGenAiRootMarking()).thenReturn(marking);
+        return new OTelTraceRawProcessor(config, mock(PipelineDescription.class), mock(PluginMetrics.class));
+    }
+
+    private static Span genAiSpan(final String traceId, final String spanId, final String parentSpanId,
+                                  final Map<String, Object> attributes) {
+        return spanBuilder(traceId, spanId, parentSpanId)
+                .withTraceGroup(parentSpanId.isEmpty() ? "genai-trace-group" : null)
+                .withTraceGroupFields(DefaultTraceGroupFields.builder().build())
+                .withAttributes(new HashMap<>(attributes))
+                .build();
+    }
+
+    private static Span byId(final Collection<Span> spans, final String spanId) {
+        return spans.stream().filter(span -> spanId.equals(span.getSpanId())).findFirst().orElseThrow();
     }
 
     private static OTelTraceRawProcessor createProcessor() {
