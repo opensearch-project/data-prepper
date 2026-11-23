@@ -11,10 +11,17 @@ Event Hubs Kafka endpoint using AWS to Azure Entra workload-identity federation,
 
 When using Confluent Schema Registry, the Kafka source automatically detects and deserializes Avro, JSON Schema,
 and Protobuf values registered under the `<topic>-value` subject.
-Protobuf values follow the ProtoJSON field mapping, except that 64-bit integer fields are emitted as numbers rather than
-strings so that numeric conditions in processors work as expected.
+Protobuf values follow the ProtoJSON field mapping with the exceptions below.
+64-bit integer fields are emitted as numbers rather than strings so that numeric conditions in processors work as expected.
 Unsigned 64-bit values (`uint64` and `fixed64`) above `9223372036854775807` are represented as `BigInteger` and are not
 supported by numeric expressions such as `/hash > 5`.
+
+For `google.protobuf.Any` values whose embedded type is unknown or whose payload cannot be parsed, the fallback preserves
+the `typeUrl` and Base64-encoded `value` fields instead of expanding an `@type` object.
+
+If Protobuf-to-event conversion fails, the record is retained with a Base64-encoded, reserialized Protobuf payload in
+`message`. This is not the original Kafka wire value: it excludes Confluent framing, including the schema ID and message
+indexes, and cannot be replayed directly through a Confluent deserializer.
 
 ## Developer guide
 

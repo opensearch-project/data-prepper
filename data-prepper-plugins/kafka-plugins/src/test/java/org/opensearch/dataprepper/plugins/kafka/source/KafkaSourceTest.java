@@ -11,20 +11,27 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.connect.json.JsonDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -44,11 +51,13 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.MDC;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -58,11 +67,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -221,6 +234,51 @@ class KafkaSourceTest {
                 equalTo(KafkaProtobufDeserializer.class));
         assertThat(properties.get(AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY),
                 equalTo(TopicNameStrategy.class.getName()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void start_withJsonAndPlaintextWithoutSchemaRegistry_preservesEachTopicFormat(final boolean jsonFirst) {
+        when(topic1.getSerdeFormat()).thenReturn(MessageFormat.JSON);
+        when(topic1.getWorkers()).thenReturn(1);
+        when(topic2.getWorkers()).thenReturn(1);
+        when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        final List<TopicConsumerConfig> topics = jsonFirst ? List.of(topic1, topic2) : List.of(topic2, topic1);
+        final List<String> expectedSchemaTypes = jsonFirst ? List.of("JSON", "PLAINTEXT") : List.of("PLAINTEXT", "JSON");
+        doReturn(topics).when(sourceConfig).getTopics();
+        when(sourceConfig.getSchemaConfig()).thenReturn(null);
+        final List<Properties> consumerProperties = new ArrayList<>();
+        final List<String> workerSchemaTypes = new ArrayList<>();
+        final KafkaSource source = createObjectUnderTest();
+
+        try (final MockedConstruction<CachedSchemaRegistryClient> registryClients = mockConstruction(CachedSchemaRegistryClient.class);
+             final MockedConstruction<KafkaConsumer> kafkaConsumers = mockConstruction(
+                     KafkaConsumer.class, (consumer, context) ->
+                             consumerProperties.add((Properties) context.arguments().get(0)));
+             final MockedConstruction<KafkaCustomConsumer> workers = mockConstruction(
+                     KafkaCustomConsumer.class, (consumer, context) ->
+                             workerSchemaTypes.add((String) context.arguments().get(5)))) {
+            try {
+                source.start(buffer);
+
+                assertThat(kafkaConsumers.constructed(), hasSize(2));
+                assertThat(workers.constructed(), hasSize(2));
+                assertThat(consumerProperties, hasSize(2));
+                assertThat(workerSchemaTypes, equalTo(expectedSchemaTypes));
+                assertThat(registryClients.constructed(), empty());
+                for (int index = 0; index < topics.size(); index++) {
+                    final Properties properties = consumerProperties.get(index);
+                    final Class<?> expectedDeserializer = "JSON".equals(expectedSchemaTypes.get(index))
+                            ? JsonDeserializer.class : StringDeserializer.class;
+                    assertThat(properties.get(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG), equalTo(expectedDeserializer));
+                    assertThat(properties.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG), equalTo(StringDeserializer.class));
+                    assertThat(properties.containsKey("schema.registry.url"), equalTo(false));
+                }
+            } finally {
+                source.stop();
+            }
+        }
     }
 
     @Test

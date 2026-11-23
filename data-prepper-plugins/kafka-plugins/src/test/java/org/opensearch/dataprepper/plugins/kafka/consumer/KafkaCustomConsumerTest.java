@@ -35,6 +35,7 @@ import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
+import org.apache.kafka.connect.json.JsonDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -552,8 +553,9 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
-    public void testJsonConsumeRecords() throws InterruptedException, Exception {
+    public void consumeRecords_withJsonWithoutSchemaRegistry_preservesFieldsKeysAndOffsets() throws Exception {
         String topic = topicConfig.getName();
+        when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonRecords(topic);
@@ -1016,13 +1018,15 @@ public class KafkaCustomConsumerTest {
     }
 
 
-    private ConsumerRecords createJsonRecords(String topic) throws Exception {
-        final ObjectMapper mapper = new ObjectMapper();
-        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
-        ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1, mapper.convertValue(testMap1, JsonNode.class));
-        ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2, mapper.convertValue(testMap2, JsonNode.class));
-        records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
-        return new ConsumerRecords(records);
+    private ConsumerRecords<String, JsonNode> createJsonRecords(final String topic) {
+        try (final JsonDeserializer deserializer = new JsonDeserializer()) {
+            deserializer.configure(Map.of(), false);
+            final ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1,
+                    deserializer.deserialize(topic, testJsonValue1.getBytes(StandardCharsets.UTF_8)));
+            final ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2,
+                    deserializer.deserialize(topic, testJsonValue2.getBytes(StandardCharsets.UTF_8)));
+            return new ConsumerRecords<>(Map.of(new TopicPartition(topic, testJsonPartition), List.of(record1, record2)));
+        }
     }
 
     private DynamicMessage createProtobufMessage() throws Descriptors.DescriptorValidationException {
