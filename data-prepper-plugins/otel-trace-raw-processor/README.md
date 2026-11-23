@@ -16,10 +16,13 @@ processor:
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
 * `trace_group_cache_ttl`: A `Duration` represents the time-to-live for traces in the trace group cache. Defaults to the value of `trace_flush_interval` (180 seconds unless configured), so that child spans arriving while orphaned spans are still held can be completed with trace group information.
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
-* `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation`, `genai_root_marking` and `genai_coverage_cache_max_size` cannot be set.
+* `disable_genai_enrichment`: A `boolean` that turns off [GenAI agent trace enrichment](#genai-agent-trace-enrichment). Default is `false`. When `true`, `genai_root_propagation`, `genai_root_marking`, `genai_coverage_cache_max_size`, `genai_root_enrichment_cache_max_size`, `genai_root_hold` and `genai_root_hold_max_size` cannot be set.
 * `genai_coverage_cache_max_size`: A `long` representing the total number of span ids to keep in the GenAI coverage cache (see [Late spans and the coverage cache](#late-spans-and-the-coverage-cache)). Must be at least `1`. Default is `500000`. Used only with `genai_root_marking: outermost`.
 * `genai_root_propagation`: Which trace root spans get GenAI attributes and token totals copied from their children: `ai_root`, `all_roots` or `none`, written exactly so (see [Root span enrichment](#root-span-enrichment)). Default is `ai_root`.
 * `genai_root_marking`: Which spans are marked `derived.gen_ai.is_root: true` as agent roots: `outermost`, `agent_spans` or `none`, written exactly so (see [Choosing how agent roots are marked](#choosing-how-agent-roots-are-marked)). Default is `outermost`.
+* `genai_root_enrichment_cache_max_size`: A `long` representing the total number of span ids to keep in the cache that trace roots are enriched from when their children arrive in other batches (see [Root span enrichment across batches](#root-span-enrichment-across-batches)). Must be at least `1`. Default is `500000`. Cannot be set when `disable_genai_enrichment` is `true`.
+* `genai_root_hold`: A `Duration` for how long to hold a GenAI root span that arrives before the children that carry its model or token usage, so it can be filled from them (see [Root span enrichment across batches](#root-span-enrichment-across-batches)). A held root is written when its hold expires, with what its children reported by then. Default is `0`: no root is held, and a root that arrives before its children is written without their values. For root-first setups such as streaming responses, set it, for example to `30s`. Must not be longer than `trace_flush_interval`. Cannot be set when `disable_genai_enrichment` is `true`.
+* `genai_root_hold_max_size`: A `long` representing the maximum number of root spans held at once by `genai_root_hold`. When holding one more root would exceed it, the root held longest is written early. Must be at least `1`. Default is `10000`. Cannot be set when `disable_genai_enrichment` is `true`.
 
 ## GenAI agent trace enrichment
 
@@ -88,7 +91,7 @@ With `agent_spans`:
 
 * **Nested agents are marked too.** An agent called by another agent, in process or over HTTP, is marked, so a trace can have several marked spans. Consumers must list a trace by its earliest marked span, or by its marked spans with no marked ancestor; a consumer that lists every marked span shows nested agents as separate agent runs.
 * **A trace without an agent or workflow span is not marked.** For example, a `chat` span under an HTTP root. Consumers that also list GenAI root spans still find traces whose root is a GenAI span.
-* **Token totals.** A marked span that reports no usage gets the usage of its descendants in the batch, unless it has a marked ancestor in the batch: then only the outer agent gets the total, so summing marked spans does not count a nested agent twice. When the outer agent is in another batch, the nested agent gets its own total.
+* **Token totals.** A marked span that reports no usage gets the usage of its descendants in the batch, unless it has a marked ancestor in the batch: then only the outer agent gets the total, so summing marked spans does not count a nested agent twice. When the outer agent is in another batch, the nested agent gets its own total. A trace root that `genai_root_propagation` enriches gets the trace's totals instead, from every batch (see [Root span enrichment across batches](#root-span-enrichment-across-batches)). With `genai_root_hold`, a nested agent that arrives while its root is held is written first, with its own total, and the root is written later with totals that include it, so summing marked spans counts that agent's usage twice. `genai_root_propagation: none`, as recommended below for `agent_spans`, avoids this.
 * **Markers set at the source** on one span do not stop the other agent spans from being marked.
 
 With `none`, a trace whose root is not a GenAI span and that has no marker set at the source has no marked span.
@@ -147,10 +150,30 @@ Wherever the processor sums `gen_ai.usage.input_tokens` and `gen_ai.usage.output
 * A span that reports either token count is treated as reporting usage, and keeps its own values.
 * Token counts sent as numeric strings are read as numbers; other values are ignored.
 
+### Root span enrichment across batches
+
+Root enrichment does not need the children in the root's batch. The processor records, per trace, the values and token usage of the children it processes, and fills each root from every child recorded so far, so a root processed alone, or in a later batch than its children, is still enriched. A root is filled only from children processed before it is written: filling a root that arrives before its children needs `genai_root_hold`, because without a hold such a root is written as it arrives.
+
+* Within a batch, values are preferred as in [Root span enrichment](#root-span-enrichment). Across batches, the first value recorded for each attribute wins.
+* Token totals count only spans with no recorded ancestor that also reports usage, as in [Token usage](#token-usage), whichever of an agent span and its own LLM calls arrives first. To tell which spans contain others, the processor records the parent link of each span of a trace with GenAI data.
+* With `genai_root_hold` set, a GenAI root that arrives before the children that carry its model or token usage, for example from a streaming response, a background model call or a tool in another process, is held back for that long. Its children are written right away. The root is written when its hold expires, filled with what its children reported by then, and on shutdown. It is written earlier only when holding a newer root would exceed `genai_root_hold_max_size` (the root held longest is written) or when a second root of the same trace arrives (the first is written). Non-GenAI roots, GenAI roots that already carry a model and token usage, and roots with `genai_root_propagation: none` are never held. A root whose children were already waiting for it when it arrived is not held either, even if they do not carry a model or token usage. The held roots count against shutdown readiness; `genAiHeldRootCount` reports how many are held, and the `genAiHeldRoot*Count` counters why each was written.
+* A root is written once: children that arrive after it is written are not copied onto it.
+* **Agents behind a non-GenAI root.** For `POST /plan` > `invoke_agent` > `chat`, the HTTP root is not a GenAI span, so it is never held, and with `genai_root_propagation: ai_root` it is not filled. The marked agent span gets token totals only from the descendants in its own batch, as in [Agent root marker](#agent-root-marker); descendants in other batches are not counted on it.
+* Root enrichment and the hold work with every `genai_root_marking` value. A held root joins the batch it is released in and is marked there as the marking value says. With `outermost`, a GenAI root is recorded as its trace's GenAI root when it arrives, so its children written while it is held are not marked. With `agent_spans`, see the token totals note in [Choosing how agent roots are marked](#choosing-how-agent-roots-are-marked).
+* Entries are kept for twice `trace_flush_interval` plus `trace_group_cache_ttl` (540 seconds at defaults). The cache holds at most `genai_root_enrichment_cache_max_size` span ids across all traces, counting each recorded parent link and each span that reports token usage. Only traces with GenAI data are stored. The `genAiRootEnrichmentSpanIdCount` metric reports how full it is; `genAiRootEnrichmentCount` reports the number of traces.
+* The recording and the root filling run atomically per trace, so pipeline workers processing spans of one trace at the same time do not lose each other's children.
+
 ## Metrics
 In addition to the metrics from [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java):
 
 * `traceGroupCacheCount` - (gauge) The count of trace groups in the trace group cache
+* `genAiRootEnrichmentCount` - (gauge) The count of traces in the GenAI root enrichment cache
+* `genAiRootEnrichmentSpanIdCount` - (gauge) The count of span ids in the GenAI root enrichment cache, the unit of `genai_root_enrichment_cache_max_size`
+* `genAiHeldRootCount` - (gauge) The count of GenAI root spans currently held for late children, up to `genai_root_hold` each
+* `genAiHeldRootExpiredCount` - (counter) The count of held GenAI root spans written when their hold expired
+* `genAiHeldRootShutdownCount` - (counter) The count of held GenAI root spans written on shutdown
+* `genAiHeldRootEvictedCount` - (counter) The count of held GenAI root spans written early because holding a newer root would exceed `genai_root_hold_max_size`
+* `genAiHeldRootReplacedCount` - (counter) The count of held GenAI root spans written early because a second root of the same trace arrived
 * `spanSetCount` - (gauge) The count of span sets in the span set collection
 * `genAiCoverageCount` - (gauge) The count of traces in the GenAI coverage cache
 * `genAiCoverageSpanIdCount` - (gauge) The count of span ids in the GenAI coverage cache, the unit of `genai_coverage_cache_max_size`

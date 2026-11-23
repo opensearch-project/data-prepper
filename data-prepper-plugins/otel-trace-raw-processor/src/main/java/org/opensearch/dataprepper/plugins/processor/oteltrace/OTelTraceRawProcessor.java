@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.SpanSet;
 import org.opensearch.dataprepper.plugins.processor.oteltrace.model.TraceGroup;
@@ -29,8 +30,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -47,6 +51,13 @@ import java.util.stream.Collectors;
 public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Record<Span>> implements RequiresPeerForwarding {
     private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
+    public static final String GENAI_ROOT_ENRICHMENT_COUNT_METRIC_NAME = "genAiRootEnrichmentCount";
+    public static final String GENAI_ROOT_ENRICHMENT_SPAN_ID_COUNT_METRIC_NAME = "genAiRootEnrichmentSpanIdCount";
+    public static final String GENAI_HELD_ROOT_COUNT_METRIC_NAME = "genAiHeldRootCount";
+    public static final String GENAI_HELD_ROOT_EXPIRED_COUNT_METRIC_NAME = "genAiHeldRootExpiredCount";
+    public static final String GENAI_HELD_ROOT_SHUTDOWN_COUNT_METRIC_NAME = "genAiHeldRootShutdownCount";
+    public static final String GENAI_HELD_ROOT_EVICTED_COUNT_METRIC_NAME = "genAiHeldRootEvictedCount";
+    public static final String GENAI_HELD_ROOT_REPLACED_COUNT_METRIC_NAME = "genAiHeldRootReplacedCount";
     public static final String TRACE_GROUP_CACHE_COUNT_METRIC_NAME = "traceGroupCacheCount";
     public static final String SPAN_SET_COUNT_METRIC_NAME = "spanSetCount";
     public static final String GENAI_COVERAGE_COUNT_METRIC_NAME = "genAiCoverageCount";
@@ -63,6 +74,23 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private final GenAiRootPropagation genAiRootPropagation;
     private final GenAiRootMarking genAiRootMarking;
     private final boolean genAiEnrichmentEnabled;
+
+    /** Per-trace values and token usage of children that trace roots are enriched from. */
+    private final GenAiRootEnrichmentState genAiRootEnrichmentState;
+    private final long genAiRootHoldMillis;
+    private final long genAiRootHoldMaxSize;
+
+    /** GenAI roots held back for late children that could complete their model or token usage. */
+    private final Map<String, HeldRootSpan> heldRootSpansByTraceId = new ConcurrentHashMap<>();
+    /**
+     * The same held roots in the order they were held, which is the order of their deadlines.
+     * Holding and releasing a root changes both collections under this deque's lock.
+     */
+    private final Deque<HeldRootSpan> heldRootSpansByDeadline = new ArrayDeque<>();
+    private final Counter heldRootExpiredCounter;
+    private final Counter heldRootShutdownCounter;
+    private final Counter heldRootEvictedCounter;
+    private final Counter heldRootReplacedCounter;
 
     private long lastTraceFlushTime = 0L;
 
@@ -100,11 +128,29 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                 ? GenAiCoverage.create(otelTraceRawProcessorConfig.getGenAiCoverageCacheMaxSize(),
                         Duration.ofMillis(2 * traceFlushInterval).plus(traceGroupCacheTimeToLive))
                 : GenAiCoverage.NONE;
+        // Root enrichment is about propagation, not marking, so it applies in every marking mode.
+        genAiRootEnrichmentState = genAiEnrichmentEnabled
+                ? GenAiRootEnrichmentState.create(otelTraceRawProcessorConfig.getGenAiRootEnrichmentCacheMaxSize(),
+                        Duration.ofMillis(2 * traceFlushInterval).plus(traceGroupCacheTimeToLive))
+                : GenAiRootEnrichmentState.NONE;
+        genAiRootHoldMillis = genAiEnrichmentEnabled
+                ? Objects.requireNonNullElse(otelTraceRawProcessorConfig.getGenAiRootHold(), Duration.ZERO).toMillis()
+                : 0L;
+        genAiRootHoldMaxSize = otelTraceRawProcessorConfig.getGenAiRootHoldMaxSize();
+        heldRootExpiredCounter = pluginMetrics.counter(GENAI_HELD_ROOT_EXPIRED_COUNT_METRIC_NAME);
+        heldRootShutdownCounter = pluginMetrics.counter(GENAI_HELD_ROOT_SHUTDOWN_COUNT_METRIC_NAME);
+        heldRootEvictedCounter = pluginMetrics.counter(GENAI_HELD_ROOT_EVICTED_COUNT_METRIC_NAME);
+        heldRootReplacedCounter = pluginMetrics.counter(GENAI_HELD_ROOT_REPLACED_COUNT_METRIC_NAME);
 
         pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.estimatedSize());
         pluginMetrics.gauge(SPAN_SET_COUNT_METRIC_NAME, traceIdSpanSetMap, cache -> (double) cache.size());
         pluginMetrics.gauge(GENAI_COVERAGE_COUNT_METRIC_NAME, genAiCoverage, coverage -> (double) coverage.estimatedSize());
         pluginMetrics.gauge(GENAI_COVERAGE_SPAN_ID_COUNT_METRIC_NAME, genAiCoverage, coverage -> (double) coverage.spanIdCount());
+        pluginMetrics.gauge(GENAI_ROOT_ENRICHMENT_COUNT_METRIC_NAME, genAiRootEnrichmentState,
+                state -> (double) state.estimatedSize());
+        pluginMetrics.gauge(GENAI_ROOT_ENRICHMENT_SPAN_ID_COUNT_METRIC_NAME, genAiRootEnrichmentState,
+                state -> (double) state.spanIdCount());
+        pluginMetrics.gauge(GENAI_HELD_ROOT_COUNT_METRIC_NAME, heldRootSpansByTraceId, map -> (double) map.size());
 
         LOG.info("Configured Trace Raw Processor with a trace flush interval of {} ms, GenAI enrichment {}.",
                 traceFlushInterval, genAiEnrichmentEnabled
@@ -131,9 +177,16 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
 
-        // Enrich GenAI agent traces (normalize attributes, strip conflicting sub-keys, mark agent roots, enrich roots)
         if (genAiEnrichmentEnabled) {
-            GenAiEnrichmentHelper.enrichBatch(processedSpans, genAiCoverage, genAiRootPropagation, genAiRootMarking);
+            // Held roots whose hold expired, and all of them on shutdown, join the batch, so they are
+            // enriched and marked like any other root.
+            processedSpans.addAll(releaseHeldRootSpans());
+            // Normalize attributes and strip conflicting sub-keys once, for both passes.
+            GenAiEnrichmentHelper.normalizeBatch(processedSpans);
+            // Record the batch's children and enrich its roots from every child recorded so far.
+            GenAiRootEnrichment.enrichNormalizedRoots(processedSpans, genAiRootEnrichmentState, genAiRootPropagation);
+            // Mark agent roots and enrich roots from the batch.
+            GenAiEnrichmentHelper.enrichNormalizedBatch(processedSpans, genAiCoverage, genAiRootPropagation, genAiRootMarking);
         }
 
         // Derive server span attributes (fault, error, operation, environment)
@@ -171,6 +224,11 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
      * claim, so any child that can observe the trace group, by its first lookup or by its re-check,
      * also observes its root and is not marked as a second agent root. A non-GenAI root is never
      * covered, so the agent span below it is still marked.
+     * A GenAI root that is still missing data its late children could provide is held instead of
+     * being returned; its children keep flowing through the trace group cache. It is released when
+     * its hold expires or on shutdown by {@link #releaseHeldRootSpans()}, or here when a newer root
+     * of the same trace replaces it or when holding this root would exceed
+     * {@code genai_root_hold_max_size}.
      *
      * @param parentSpan
      * @return List containing root span, along with any child spans that have already been processed.
@@ -185,9 +243,14 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         traceIdTraceGroupCache.put(parentSpanTraceId, traceGroup);
 
         final List<Span> recordsToFlush = new LinkedList<>();
-        recordsToFlush.add(parentSpan);
 
         final SpanSet claimedSpanSet = traceIdSpanSetMap.remove(parentSpanTraceId);
+        if (shouldHoldRootSpan(parentSpan, claimedSpanSet)) {
+            recordsToFlush.addAll(holdRootSpan(parentSpan));
+        } else {
+            recordsToFlush.add(parentSpan);
+        }
+
         if (claimedSpanSet != null) {
             for (final Span span : claimedSpanSet.getSpans()) {
                 fillInTraceGroupInfo(span, traceGroup);
@@ -196,6 +259,92 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         }
 
         return recordsToFlush;
+    }
+
+    /**
+     * Whether to hold a trace's root span back for late children. Only a GenAI root still missing
+     * a model or token usage that the accumulated trace state cannot provide is held; children
+     * waiting in memory are about to update the state in this very batch, so their root is not.
+     */
+    private boolean shouldHoldRootSpan(final Span rootSpan, final SpanSet waitingChildren) {
+        if (genAiRootHoldMillis <= 0 || isShuttingDown) {
+            return false;
+        }
+        if (waitingChildren != null && !waitingChildren.getSpans().isEmpty()) {
+            return false;
+        }
+        return GenAiRootEnrichment.rootAwaitsEnrichment(rootSpan, genAiRootEnrichmentState, genAiRootPropagation);
+    }
+
+    /**
+     * Holds a root until its deadline, and returns the roots this releases: an earlier held root
+     * of the same trace, which it replaces, and the roots held longest when holding it would exceed
+     * {@code genai_root_hold_max_size}. Released roots join the batch being processed.
+     */
+    private List<Span> holdRootSpan(final Span rootSpan) {
+        final List<Span> releasedRootSpans = new ArrayList<>();
+        synchronized (heldRootSpansByDeadline) {
+            final HeldRootSpan heldRootSpan = new HeldRootSpan(rootSpan, System.currentTimeMillis() + genAiRootHoldMillis);
+            final HeldRootSpan replacedRootSpan = heldRootSpansByTraceId.put(heldRootSpan.traceId, heldRootSpan);
+            if (replacedRootSpan != null) {
+                heldRootSpansByDeadline.remove(replacedRootSpan);
+                releasedRootSpans.add(replacedRootSpan.span);
+                heldRootReplacedCounter.increment();
+            }
+            heldRootSpansByDeadline.addLast(heldRootSpan);
+            while (heldRootSpansByTraceId.size() > genAiRootHoldMaxSize) {
+                final HeldRootSpan oldestRootSpan = heldRootSpansByDeadline.pollFirst();
+                if (oldestRootSpan == null) {
+                    break;
+                }
+                if (heldRootSpansByTraceId.remove(oldestRootSpan.traceId, oldestRootSpan)) {
+                    releasedRootSpans.add(oldestRootSpan.span);
+                    heldRootEvictedCounter.increment();
+                }
+            }
+        }
+        return releasedRootSpans;
+    }
+
+    /**
+     * Releases the held GenAI roots whose hold expired, enriched with whatever the trace state has
+     * by then, and all of them on shutdown. Each root is claimed with an atomic remove, so it is
+     * released exactly once.
+     */
+    private List<Span> releaseHeldRootSpans() {
+        if (heldRootSpansByTraceId.isEmpty()) {
+            return Collections.emptyList();
+        }
+        final List<Span> releasedRootSpans = new ArrayList<>();
+        final long now = System.currentTimeMillis();
+        synchronized (heldRootSpansByDeadline) {
+            while (!heldRootSpansByDeadline.isEmpty()
+                    && (isShuttingDown || heldRootSpansByDeadline.peekFirst().deadlineMillis <= now)) {
+                final HeldRootSpan heldRootSpan = heldRootSpansByDeadline.pollFirst();
+                if (heldRootSpansByTraceId.remove(heldRootSpan.traceId, heldRootSpan)) {
+                    releasedRootSpans.add(heldRootSpan.span);
+                    if (isShuttingDown) {
+                        heldRootShutdownCounter.increment();
+                    } else {
+                        heldRootExpiredCounter.increment();
+                    }
+                }
+            }
+        }
+        return releasedRootSpans;
+    }
+
+    /** A root span held back for late children, and the time its hold expires. */
+    private static final class HeldRootSpan {
+        private final Span span;
+        private final String traceId;
+        private final long deadlineMillis;
+
+        private HeldRootSpan(final Span span, final long deadlineMillis) {
+            this.span = span;
+            this.traceId = span.getTraceId();
+            this.deadlineMillis = deadlineMillis;
+        }
     }
 
     /**
@@ -332,7 +481,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
     @Override
     public boolean isReadyForShutdown() {
-        return traceIdSpanSetMap.isEmpty();
+        return traceIdSpanSetMap.isEmpty() && heldRootSpansByTraceId.isEmpty();
     }
 
     @Override
