@@ -97,11 +97,24 @@ final class GenAiEnrichmentHelper {
      */
     static void enrichBatch(final List<Span> spans, final GenAiCoverage coverage,
                             final GenAiRootPropagation propagation, final GenAiRootMarking marking) {
+        normalizeBatch(spans);
+        enrichNormalizedBatch(spans, coverage, propagation, marking);
+    }
+
+    /** Normalizes vendor attributes and strips flattened sub-keys of every span of a batch. */
+    static void normalizeBatch(final List<Span> spans) {
         for (final Span span : spans) {
             normalizeAttributes(span);
             stripFlattenedSubkeys(span);
         }
+    }
 
+    /**
+     * Same as {@link #enrichBatch(List, GenAiCoverage, GenAiRootPropagation, GenAiRootMarking)},
+     * for a batch {@link #normalizeBatch} already normalized.
+     */
+    static void enrichNormalizedBatch(final List<Span> spans, final GenAiCoverage coverage,
+                                      final GenAiRootPropagation propagation, final GenAiRootMarking marking) {
         final Map<String, List<Span>> spansByTrace = new LinkedHashMap<>();
         for (final Span span : spans) {
             spansByTrace.computeIfAbsent(span.getTraceId(), k -> new ArrayList<>()).add(span);
@@ -504,7 +517,7 @@ final class GenAiEnrichmentHelper {
     }
 
     /** A token count from a number or a numeric string; anything else is treated as absent. */
-    private static Long toLong(final Object value) {
+    static Long toLong(final Object value) {
         if (value instanceof Number) {
             return ((Number) value).longValue();
         }
@@ -518,7 +531,7 @@ final class GenAiEnrichmentHelper {
         return null;
     }
 
-    private static Boolean toBoolean(final Object value) {
+    static Boolean toBoolean(final Object value) {
         if (value instanceof Boolean) {
             return (Boolean) value;
         }
@@ -535,7 +548,7 @@ final class GenAiEnrichmentHelper {
     }
 
     /** Start times as instants: ISO-8601 strings with 0 to 9 fractional digits do not sort as text. */
-    private static Instant toInstant(final String time) {
+    static Instant toInstant(final String time) {
         if (time == null) {
             return null;
         }

@@ -91,6 +91,114 @@ class OtelTraceRawProcessorConfigTest {
     }
 
     @Test
+    void genAiRootEnrichmentSettings_haveTheirDefaults_andAreValid() {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of());
+
+        assertThat(config.getGenAiRootEnrichmentCacheMaxSize(), equalTo(500_000L));
+        assertThat(config.getGenAiRootHold(), equalTo(Duration.ZERO));
+        assertThat(config.getGenAiRootHoldMaxSize(), equalTo(10_000L));
+        assertThat(config.isGenAiRootEnrichmentSettingsValid(), is(true));
+        assertThat(config.isGenAiRootHoldValid(), is(true));
+    }
+
+    @Test
+    void deserialize_genAiRootEnrichmentSettings_readsTheValues() {
+        final long cacheMaxSize = ThreadLocalRandom.current().nextLong(1, 1_000_000);
+        final long holdSeconds = ThreadLocalRandom.current().nextLong(1, OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC + 1);
+        final long holdMaxSize = ThreadLocalRandom.current().nextLong(1, 100_000);
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of(
+                "genai_root_enrichment_cache_max_size", cacheMaxSize,
+                "genai_root_hold", Duration.ofSeconds(holdSeconds).toString(),
+                "genai_root_hold_max_size", holdMaxSize));
+
+        assertThat(config.getGenAiRootEnrichmentCacheMaxSize(), equalTo(cacheMaxSize));
+        assertThat(config.getGenAiRootHold(), equalTo(Duration.ofSeconds(holdSeconds)));
+        assertThat(config.getGenAiRootHoldMaxSize(), equalTo(holdMaxSize));
+        assertThat(config.isGenAiRootHoldValid(), is(true));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "180, PT180S, true",
+            "180, PT181S, false",
+            "60, PT1M, true",
+            "60, PT61S, false",
+            "180, PT0S, true",
+            "180, PT-1S, false"
+    })
+    void isGenAiRootHoldValid_isTrueOnlyFromZeroToTheTraceFlushInterval(final long traceFlushInterval, final String hold,
+                                                                        final boolean valid) {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of(
+                "trace_flush_interval", traceFlushInterval, "genai_root_hold", hold));
+
+        assertThat(config.isGenAiRootHoldValid(), is(valid));
+    }
+
+    @Test
+    void isGenAiRootHoldValid_hasAnAssertTrueConstraint() throws NoSuchMethodException {
+        final AssertTrue assertTrue = OtelTraceRawProcessorConfig.class.getDeclaredMethod("isGenAiRootHoldValid")
+                .getAnnotation(AssertTrue.class);
+
+        assertThat(assertTrue, notNullValue());
+        assertThat(assertTrue.message(), containsString("trace_flush_interval"));
+    }
+
+    @Test
+    void genAiRootHoldMaxSize_mustBeAtLeastOne() throws NoSuchFieldException {
+        final Min min = OtelTraceRawProcessorConfig.class.getDeclaredField("genAiRootHoldMaxSize").getAnnotation(Min.class);
+
+        assertThat(min, notNullValue());
+        assertThat(min.value(), equalTo(1L));
+    }
+
+    @Test
+    void deserialize_genAiRootHoldOfZero_disablesHolding() {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of("genai_root_hold", "PT0S"));
+
+        assertThat(config.getGenAiRootHold(), equalTo(Duration.ZERO));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "genai_root_enrichment_cache_max_size, 1000",
+            "genai_root_hold, PT10S",
+            "genai_root_hold_max_size, 500"
+    })
+    void isGenAiRootEnrichmentSettingsValid_whenASettingIsSetWithEnrichmentDisabled_isFalse(final String setting, final String value) {
+        final Object parsed = setting.endsWith("_max_size") ? (Object) Long.valueOf(value) : value;
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of("disable_genai_enrichment", true, setting, parsed));
+
+        assertThat(config.isGenAiRootEnrichmentSettingsValid(), is(false));
+    }
+
+    @Test
+    void isGenAiRootEnrichmentSettingsValid_whenSetWithEnrichmentEnabled_isTrue() {
+        final OtelTraceRawProcessorConfig config = deserialize(Map.of(
+                "genai_root_enrichment_cache_max_size", 1000,
+                "genai_root_hold", "PT10S",
+                "genai_root_hold_max_size", 500));
+
+        assertThat(config.isGenAiRootEnrichmentSettingsValid(), is(true));
+    }
+
+    @Test
+    void isGenAiRootEnrichmentSettingsValid_hasAnAssertTrueConstraint() throws NoSuchMethodException {
+        final AssertTrue assertTrue = OtelTraceRawProcessorConfig.class.getDeclaredMethod("isGenAiRootEnrichmentSettingsValid")
+                .getAnnotation(AssertTrue.class);
+
+        assertThat(assertTrue, notNullValue());
+        assertThat(assertTrue.message(), containsString("disable_genai_enrichment"));
+    }
+
+    @Test
+    void genAiRootEnrichmentCacheMaxSize_mustBeAtLeastOne() throws NoSuchFieldException {
+        final Min min = OtelTraceRawProcessorConfig.class.getDeclaredField("genAiRootEnrichmentCacheMaxSize").getAnnotation(Min.class);
+
+        assertThat(min, notNullValue());
+        assertThat(min.value(), equalTo(1L));
+    }
+
+    @Test
     void deserialize_disableGenAiEnrichmentTrue_disablesEnrichment() {
         final OtelTraceRawProcessorConfig config = deserialize(Map.of("disable_genai_enrichment", true));
 

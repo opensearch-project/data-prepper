@@ -74,6 +74,23 @@ public class IndexManagerFactoryTests {
     }
 
     @Test
+    public void getIndexManager_GenAIEvaluationPlain_usesIsmPolicyManagement() {
+        final AbstractIndexManager indexManager = indexManagerFactory.getIndexManager(
+                IndexType.GENAI_EVALUATION_PLAIN, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        assertThat(indexManager, instanceOf(IndexManager.class));
+        assertThat(indexManager.ismPolicyManagementStrategy, instanceOf(IsmPolicyManagement.class));
+    }
+
+    @Test
+    public void getIndexManager_GenAIEvaluationPlain_onServerless_usesNoIsmPolicyManagement() {
+        when(indexConfiguration.getServerless()).thenReturn(true);
+        final AbstractIndexManager indexManager = indexManagerFactory.getIndexManager(
+                IndexType.GENAI_EVALUATION_PLAIN, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+        assertThat(indexManager, instanceOf(IndexManager.class));
+        assertThat(indexManager.ismPolicyManagementStrategy, instanceOf(NoIsmPolicyManagement.class));
+    }
+
+    @Test
     public void getIndexManager_Default() {
         final IndexManager indexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);

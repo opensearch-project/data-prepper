@@ -25,6 +25,9 @@ import java.time.Duration;
         "span records by state caching the root span information for each <code>traceId</code>.")
 public class OtelTraceRawProcessorConfig {
     static final long DEFAULT_TG_FLUSH_INTERVAL_SEC = 180L;
+    static final long DEFAULT_GENAI_ROOT_ENRICHMENT_CACHE_MAX_SIZE = 500_000L;
+    static final Duration DEFAULT_GENAI_ROOT_HOLD = Duration.ZERO;
+    static final long DEFAULT_GENAI_ROOT_HOLD_MAX_SIZE = 10_000L;
     static final long MAX_TRACE_ID_CACHE_SIZE = 1_000_000L;
     static final long DEFAULT_GENAI_COVERAGE_CACHE_MAX_SIZE = 500_000L;
 
@@ -87,6 +90,29 @@ public class OtelTraceRawProcessorConfig {
             "A marker set at the source is never changed. Default is <code>outermost</code>.")
     private GenAiRootMarking genAiRootMarking;
 
+    @JsonProperty(value = "genai_root_enrichment_cache_max_size", defaultValue = "500000")
+    @JsonPropertyDescription("Represents the maximum number of span ids to keep in the cache of what trace roots are " +
+            "enriched from: per trace, the gen_ai.* values and token usage of children processed in other batches than their " +
+            "root, and the parent links needed to count each agent's token usage once. Default is <code>500000</code>.")
+    @Min(1)
+    private Long genAiRootEnrichmentCacheMaxSize;
+
+    @JsonProperty(value = "genai_root_hold", defaultValue = "PT0S")
+    @JsonPropertyDescription("How long to hold a GenAI root span that arrives before the child spans that carry its " +
+            "model or token usage, so it can be filled from them. A held root is written when its hold expires, with " +
+            "what its children reported by then. Without a hold, such a root is written as it arrives, before its " +
+            "children. Use for root-first setups such as streaming responses, for example <code>30s</code>. Must not be " +
+            "longer than <code>trace_flush_interval</code>. The value may be an ISO 8601 notation such as " +
+            "<code>PT30S</code> or a duration and unit such as <code>30s</code>. Default is <code>0</code>, no hold.")
+    private Duration genAiRootHold;
+
+    @JsonProperty(value = "genai_root_hold_max_size", defaultValue = "10000")
+    @JsonPropertyDescription("Represents the maximum number of root spans held at once by <code>genai_root_hold</code>. " +
+            "When holding one more root would exceed it, the root held longest is written early. " +
+            "Default is <code>10000</code>.")
+    @Min(1)
+    private Long genAiRootHoldMaxSize;
+
     public long getTraceFlushIntervalSeconds() {
         return traceFlushInterval;
     }
@@ -97,6 +123,31 @@ public class OtelTraceRawProcessorConfig {
 
     public long getTraceGroupCacheMaxSize() {
         return traceGroupCacheMaxSize;
+    }
+
+    public long getGenAiRootEnrichmentCacheMaxSize() {
+        return genAiRootEnrichmentCacheMaxSize != null ? genAiRootEnrichmentCacheMaxSize : DEFAULT_GENAI_ROOT_ENRICHMENT_CACHE_MAX_SIZE;
+    }
+
+    public Duration getGenAiRootHold() {
+        return genAiRootHold != null ? genAiRootHold : DEFAULT_GENAI_ROOT_HOLD;
+    }
+
+    public long getGenAiRootHoldMaxSize() {
+        return genAiRootHoldMaxSize != null ? genAiRootHoldMaxSize : DEFAULT_GENAI_ROOT_HOLD_MAX_SIZE;
+    }
+
+    @AssertTrue(message = "genai_root_enrichment_cache_max_size, genai_root_hold and genai_root_hold_max_size cannot be set " +
+            "when disable_genai_enrichment is true")
+    boolean isGenAiRootEnrichmentSettingsValid() {
+        return !disableGenAiEnrichment
+                || (genAiRootEnrichmentCacheMaxSize == null && genAiRootHold == null && genAiRootHoldMaxSize == null);
+    }
+
+    @AssertTrue(message = "genai_root_hold must be 0 or more and not longer than trace_flush_interval")
+    boolean isGenAiRootHoldValid() {
+        return genAiRootHold == null
+                || (!genAiRootHold.isNegative() && genAiRootHold.compareTo(Duration.ofSeconds(traceFlushInterval)) <= 0);
     }
 
     public boolean isGenAiEnrichmentDisabled() {

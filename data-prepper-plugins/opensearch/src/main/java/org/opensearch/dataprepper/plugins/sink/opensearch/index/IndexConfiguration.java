@@ -258,6 +258,19 @@ public class IndexConfiguration {
                         DISTRIBUTION_VERSION, DistributionVersion.ES6.getVersion()));
             }
             templateType = TemplateType.INDEX_TEMPLATE;
+        } else if (indexType == IndexType.GENAI_EVALUATION_PLAIN) {
+            // The evaluation template is composed from component templates, which V1 templates cannot do.
+            if (DistributionVersion.ES6.equals(builder.distributionVersion)) {
+                throw new InvalidPluginConfigurationException(String.format(
+                        "%s %s is not supported with %s %s", INDEX_TYPE, indexType.getValue(),
+                        DISTRIBUTION_VERSION, DistributionVersion.ES6.getVersion()));
+            }
+            if (builder.templateType == TemplateType.V1) {
+                throw new InvalidPluginConfigurationException(String.format(
+                        "%s %s requires %s %s; %s is not supported", INDEX_TYPE, indexType.getValue(),
+                        TEMPLATE_TYPE, TemplateType.INDEX_TEMPLATE.getTypeName(), TemplateType.V1.getTypeName()));
+            }
+            templateType = TemplateType.INDEX_TEMPLATE;
         } else if (builder.serverless) {
             templateType = TemplateType.INDEX_TEMPLATE;
         } else {
@@ -545,6 +558,8 @@ public class IndexConfiguration {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.LOG_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_STANDARD_TEMPLATE_FILE);
+            } else if (indexType.equals(IndexType.GENAI_EVALUATION_PLAIN)) {
+                templateURL = loadExistingTemplate(templateType, IndexConstants.GENAI_EVALUATION_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS_PLAIN)) {
@@ -576,20 +591,34 @@ public class IndexConfiguration {
 
     @SuppressWarnings("unchecked")
     private Map<String, Map<String, Object>> readManagedComponentTemplates(final IndexType indexType) {
-        if (indexType != IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2) {
+        final Map<String, Map<String, Object>> componentTemplates = new LinkedHashMap<>();
+        if (indexType == IndexType.TRACE_ANALYTICS_RAW_PLAIN_V2) {
+            // Reuse the plain span template's mappings so they are defined in one file only.
+            componentTemplates.put(IndexConstants.OTEL_APM_SPAN_PLAIN_COMPONENT_TEMPLATE,
+                    readComponentTemplateFromIndexTemplate(IndexConstants.RAW_STANDARD_TEMPLATE_FILE));
+            componentTemplates.put(IndexConstants.OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE,
+                    readResourceTemplate(TemplateType.INDEX_TEMPLATE, IndexConstants.OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE_FILE));
+        } else if (indexType == IndexType.GENAI_EVALUATION_PLAIN) {
+            // Reuse the plain logs template's mappings; the fields component holds only the evaluation fields.
+            componentTemplates.put(IndexConstants.GENAI_EVALUATION_LOGS_PLAIN_COMPONENT_TEMPLATE,
+                    readComponentTemplateFromIndexTemplate(IndexConstants.LOGS_STANDARD_TEMPLATE_FILE));
+            componentTemplates.put(IndexConstants.GENAI_EVALUATION_FIELDS_COMPONENT_TEMPLATE,
+                    readResourceTemplate(TemplateType.INDEX_TEMPLATE, IndexConstants.GENAI_EVALUATION_FIELDS_COMPONENT_TEMPLATE_FILE));
+        } else {
             return Collections.emptyMap();
         }
-        // Reuse the plain span template's mappings so they are defined in one file only.
-        final Map<String, Object> plainTemplate = readResourceTemplate(TemplateType.INDEX_TEMPLATE, IndexConstants.RAW_STANDARD_TEMPLATE_FILE);
-        final Map<String, Object> plainComponentTemplate = new HashMap<>();
-        plainComponentTemplate.put(VERSION, plainTemplate.get(VERSION));
-        plainComponentTemplate.put(TEMPLATE, plainTemplate.get(TEMPLATE));
-
-        final Map<String, Map<String, Object>> componentTemplates = new LinkedHashMap<>();
-        componentTemplates.put(IndexConstants.OTEL_APM_SPAN_PLAIN_COMPONENT_TEMPLATE, plainComponentTemplate);
-        componentTemplates.put(IndexConstants.OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE,
-                readResourceTemplate(TemplateType.INDEX_TEMPLATE, IndexConstants.OTEL_APM_SPAN_NESTED_KEYWORD_COMPONENT_TEMPLATE_FILE));
         return Collections.unmodifiableMap(componentTemplates);
+    }
+
+    /**
+     * Wraps the {@code template} block and {@code version} of a built-in composable index template as a component template.
+     */
+    private Map<String, Object> readComponentTemplateFromIndexTemplate(final String indexTemplateFile) {
+        final Map<String, Object> indexTemplate = readResourceTemplate(TemplateType.INDEX_TEMPLATE, indexTemplateFile);
+        final Map<String, Object> componentTemplate = new HashMap<>();
+        componentTemplate.put(VERSION, indexTemplate.get(VERSION));
+        componentTemplate.put(TEMPLATE, indexTemplate.get(TEMPLATE));
+        return componentTemplate;
     }
 
     private Map<String, Object> readResourceTemplate(final TemplateType templateType, final String templateFile) {
