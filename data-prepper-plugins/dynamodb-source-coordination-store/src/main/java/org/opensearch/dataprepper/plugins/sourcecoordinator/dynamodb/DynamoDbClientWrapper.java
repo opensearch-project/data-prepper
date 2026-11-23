@@ -159,11 +159,18 @@ class DynamoDbClientWrapper {
         }
     }
 
-    private boolean tryAcquirePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+    private boolean tryAcquirePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem,
+                                            final SourcePartitionStatus sourcePartitionStatus) {
         try {
             tryUpdateItem(dynamoDbSourcePartitionItem);
             return true;
         } catch (final Exception e) {
+            final Throwable cause = e.getCause() != null ? e.getCause() : e;
+            pluginMetrics.counterWithTags(ACQUIRE_WRITE_FAILURES, STATUS_TAG, sourcePartitionStatus.name(),
+                    "exception", cause.getClass().getSimpleName()).increment();
+            LOG.debug("Failed to acquire {} partition {} of source {} due to {}", sourcePartitionStatus,
+                    dynamoDbSourcePartitionItem.getSourcePartitionKey(), dynamoDbSourcePartitionItem.getSourceIdentifier(),
+                    cause.getClass().getSimpleName());
             return false;
         }
     }
@@ -247,7 +254,7 @@ class DynamoDbClientWrapper {
                                                                     final int pageLimit,
                                                                     final Duration ttl) {
         final long startNanos = System.nanoTime();
-        int lostRaces = 0;
+        int failedAttempts = 0;
         try {
 
             final DynamoDbIndex<DynamoDbSourcePartitionItem> sourceStatusIndex = table.index(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX);
@@ -288,14 +295,13 @@ class DynamoDbClientWrapper {
                         item.setExpirationTime(Instant.now().plus(ttl).getEpochSecond());
                     }
 
-                    final boolean acquired = this.tryAcquirePartitionItem(item);
+                    final boolean acquired = this.tryAcquirePartitionItem(item, sourcePartitionStatus);
                     if (acquired) {
-                        LOG.debug("Acquired {} partition {} after {} lost races in {} ms", sourcePartitionStatus, item.getSourcePartitionKey(),
-                                lostRaces, (System.nanoTime() - startNanos) / 1_000_000);
+                        LOG.debug("Acquired {} partition {} after {} failed attempts in {} ms", sourcePartitionStatus, item.getSourcePartitionKey(),
+                                failedAttempts, (System.nanoTime() - startNanos) / 1_000_000);
                         return Optional.of(item);
                     }
-                    lostRaces++;
-                    pluginMetrics.counterWithTags(ACQUIRE_WRITE_FAILURES, STATUS_TAG, sourcePartitionStatus.name()).increment();
+                    failedAttempts++;
                 }
             }
         } catch (final Exception e) {
