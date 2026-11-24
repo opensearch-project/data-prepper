@@ -15,10 +15,13 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.micrometer.registry.otlp.AggregationTemporality;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
@@ -31,10 +34,12 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -87,6 +92,73 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(2));
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.Prometheus));
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
+    }
+
+    @Test
+    void testOtlpMetricsConfig() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration =
+                makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_WITH_OTLP_METRICS_FILE);
+
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(),
+                Matchers.contains(MetricRegistryType.EmbeddedMetricsFormat, MetricRegistryType.OTLP));
+        final OtlpMetricsConfig otlpMetricsConfig = dataPrepperConfiguration.getOtlpMetricsConfig();
+        assertThat(otlpMetricsConfig.getEndpoint(), equalTo("https://collector.example.com:4318/v1/metrics"));
+        assertThat(otlpMetricsConfig.getAggregationTemporality(), equalTo(AggregationTemporality.CUMULATIVE));
+        assertThat(otlpMetricsConfig.getStep(), equalTo(Duration.ofSeconds(30)));
+        assertThat(otlpMetricsConfig.getResourceAttributes(),
+                equalTo(Map.of("service.name", "data-prepper-test", "deployment.environment", "test")));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"metric_registries: [OTLP]", "metric_registries: [OTLP]\notlp_metrics: {}"})
+    void testOtlpMetricsConfigDefaultsWhenMissingOrEmpty(final String yaml) throws IOException {
+        final OtlpMetricsConfig otlpMetricsConfig = OBJECT_MAPPER.readValue(yaml, DataPrepperConfiguration.class).getOtlpMetricsConfig();
+
+        assertThat(otlpMetricsConfig.getEndpoint(), equalTo("http://localhost:4318/v1/metrics"));
+        assertThat(otlpMetricsConfig.getAggregationTemporality(), equalTo(AggregationTemporality.DELTA));
+        assertThat(otlpMetricsConfig.getStep(), equalTo(Duration.ofSeconds(60)));
+        assertThat(otlpMetricsConfig.getResourceAttributes(), equalTo(Map.of()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://otel_collector:4318/v1/metrics", "https://collector.example.com/v1/metrics", "http://[::1]:4318/v1/metrics"})
+    void testOtlpMetricsConfigAcceptsEndpoint(final String endpoint) throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = OBJECT_MAPPER.readValue(
+                "metric_registries: [OTLP]\notlp_metrics:\n  endpoint: \"" + endpoint + "\"", DataPrepperConfiguration.class);
+
+        assertThat(dataPrepperConfiguration.getOtlpMetricsConfig().getEndpoint(), equalTo(endpoint));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"CUMULATIVE", "Cumulative"})
+    void testOtlpMetricsAggregationTemporalityIsCaseInsensitive(final String value) throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = OBJECT_MAPPER.readValue(
+                "metric_registries: [OTLP]\notlp_metrics:\n  aggregation_temporality: " + value, DataPrepperConfiguration.class);
+
+        assertThat(dataPrepperConfiguration.getOtlpMetricsConfig().getAggregationTemporality(), equalTo(AggregationTemporality.CUMULATIVE));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidOtlpMetricsOptions")
+    void testInvalidOtlpMetricsConfigIsRejected(final String otlpMetricsOption, final String expectedMessage) {
+        final String yaml = "metric_registries: [OTLP]\notlp_metrics:\n  " + otlpMetricsOption;
+
+        final JsonMappingException exception = assertThrows(JsonMappingException.class,
+                () -> OBJECT_MAPPER.readValue(yaml, DataPrepperConfiguration.class));
+        assertThat(exception.getMessage(), containsString(expectedMessage));
+    }
+
+    private static Stream<Arguments> invalidOtlpMetricsOptions() {
+        return Stream.of(
+                Arguments.of("aggregation_temporality: sometimes", "otlp_metrics.aggregation_temporality must be delta or cumulative"),
+                Arguments.of("endpoint: \"not a url\"", "otlp_metrics.endpoint is not a valid URL"),
+                Arguments.of("endpoint: \"localhost:4318\"", "otlp_metrics.endpoint must be an http or https URL"),
+                Arguments.of("endpoint: \"http:///v1/metrics\"", "otlp_metrics.endpoint must be an http or https URL with a host"),
+                Arguments.of("step: 0s", "otlp_metrics.step must be a positive duration"),
+                Arguments.of("step: PT-1S", "otlp_metrics.step must be a positive duration"),
+                Arguments.of("resource_attributes: {service.name: }", "otlp_metrics.resource_attributes values must not be empty"),
+                Arguments.of("unknown_option: true", "unknown_option")
+        );
     }
 
     @Test
