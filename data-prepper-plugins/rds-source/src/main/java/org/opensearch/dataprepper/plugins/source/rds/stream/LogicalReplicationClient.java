@@ -44,6 +44,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     private PGReplicationStream stream = null;
     private volatile boolean disconnectRequested = false;
+    private volatile LogSequenceNumber lastFlushedCommitLsn = LogSequenceNumber.INVALID_LSN;
 
     public LogicalReplicationClient(final ConnectionManager connectionManager,
                                     final String publicationName,
@@ -89,10 +90,12 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                         // decode and convert events to Data Prepper events
                         eventProcessor.process(msg);
 
-                        // Acknowledge receiving the message
-                        LogSequenceNumber lsn = stream.getLastReceiveLSN();
-                        stream.setFlushedLSN(lsn);
-                        stream.setAppliedLSN(lsn);
+                        // Report only the last durably-acked commit LSN to PostgreSQL.
+                        // pgjdbc sends this periodically (~10s) as a standby status update.
+                        // Reporting the read position (lastReceiveLSN) would cause PostgreSQL
+                        // to skip data on reconnect if the worker crashes before the sink ack.
+                        stream.setFlushedLSN(lastFlushedCommitLsn);
+                        stream.setAppliedLSN(lastFlushedCommitLsn);
                     } catch (Exception e) {
                         LOG.error("Exception while processing Postgres replication stream. ");
                         closeStream();
@@ -125,6 +128,14 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     public void setEventProcessor(LogicalReplicationEventProcessor eventProcessor) {
         this.eventProcessor = eventProcessor;
+    }
+
+    /**
+     * Called by the checkpoint manager when a commit's sink acknowledgement is confirmed.
+     * Updates the flush position that pgjdbc will report to PostgreSQL.
+     */
+    public void updateFlushedCommitLsn(LogSequenceNumber commitLsn) {
+        this.lastFlushedCommitLsn = commitLsn;
     }
 
     public void setStartLsn(LogSequenceNumber startLsn) {

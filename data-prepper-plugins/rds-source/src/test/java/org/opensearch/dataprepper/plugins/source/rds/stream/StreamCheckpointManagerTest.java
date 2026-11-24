@@ -142,6 +142,74 @@ class StreamCheckpointManagerTest {
         verify(acknowledgementSetManager).create(any(Consumer.class), eq(ACK_TIMEOUT));
     }
 
+    @Test
+    void test_checkpoint_updates_flushed_lsn_on_replication_client() throws Exception {
+        engineType = EngineType.POSTGRES;
+        isAcknowledgmentEnabled = true;
+        final LogicalReplicationClient replicationClient = mock(LogicalReplicationClient.class);
+        final StreamCheckpointManager streamCheckpointManager = new StreamCheckpointManager(
+                streamCheckpointer, isAcknowledgmentEnabled, acknowledgementSetManager, stopStreamRunnable,
+                ACK_TIMEOUT, engineType, pluginMetrics, replicationClient);
+
+        final LogSequenceNumber lsn = LogSequenceNumber.valueOf("0/ABCD");
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(lsn, System.currentTimeMillis(), 10);
+        changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
+        streamCheckpointManager.getChangeEventStatuses().add(changeEventStatus);
+
+        // Run in a thread since runCheckpointing blocks on Thread.sleep
+        Thread t = new Thread(streamCheckpointManager::runCheckpointing);
+        t.start();
+        Thread.sleep(500);  // give it time to process
+        t.interrupt();
+        t.join(2000);
+
+        verify(streamCheckpointer).checkpoint(engineType, changeEventStatus);
+        verify(replicationClient).updateFlushedCommitLsn(lsn);
+    }
+
+    @Test
+    void test_checkpoint_does_not_update_flush_lsn_when_no_replication_client() throws Exception {
+        engineType = EngineType.POSTGRES;
+        // Use the constructor without replicationLogClient (null), non-ack path
+        final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
+
+        final LogSequenceNumber lsn = LogSequenceNumber.valueOf("0/ABCD");
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(lsn, System.currentTimeMillis(), 10);
+        streamCheckpointManager.getChangeEventStatuses().add(changeEventStatus);
+
+        Thread t = new Thread(streamCheckpointManager::runCheckpointing);
+        t.start();
+        Thread.sleep(500);
+        t.interrupt();
+        t.join(2000);
+
+        verify(streamCheckpointer).checkpoint(engineType, changeEventStatus);
+    }
+
+    @Test
+    void test_checkpoint_does_not_update_flush_lsn_for_mysql() throws Exception {
+        engineType = EngineType.MYSQL;
+        isAcknowledgmentEnabled = true;
+        final LogicalReplicationClient replicationClient = mock(LogicalReplicationClient.class);
+        final StreamCheckpointManager streamCheckpointManager = new StreamCheckpointManager(
+                streamCheckpointer, isAcknowledgmentEnabled, acknowledgementSetManager, stopStreamRunnable,
+                ACK_TIMEOUT, engineType, pluginMetrics, replicationClient);
+
+        final BinlogCoordinate binlogCoordinate = mock(BinlogCoordinate.class);
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(binlogCoordinate, System.currentTimeMillis(), 10);
+        changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
+        streamCheckpointManager.getChangeEventStatuses().add(changeEventStatus);
+
+        Thread t = new Thread(streamCheckpointManager::runCheckpointing);
+        t.start();
+        Thread.sleep(500);
+        t.interrupt();
+        t.join(2000);
+
+        verify(streamCheckpointer).checkpoint(engineType, changeEventStatus);
+        verify(replicationClient, org.mockito.Mockito.never()).updateFlushedCommitLsn(any());
+    }
+
     private StreamCheckpointManager createObjectUnderTest() {
         return new StreamCheckpointManager(
                 streamCheckpointer, isAcknowledgmentEnabled, acknowledgementSetManager, stopStreamRunnable, ACK_TIMEOUT, engineType, pluginMetrics);
