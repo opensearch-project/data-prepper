@@ -94,7 +94,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private Set<TopicPartition> partitionsToReset;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Map<Integer, TopicPartitionCommitTracker> partitionCommitTrackerMap;
-    // Next offset expected from poll() for each partition. Only used by the consumer thread.
     private final Map<TopicPartition, Long> nextExpectedOffsets;
     private List<Map<TopicPartition, CommitOffsetRange>> acknowledgedOffsets;
     private final boolean acknowledgementsEnabled;
@@ -621,15 +620,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         }
     }
 
-    /**
-     * Returns the offset range covered by the records polled for a partition.
-     * <p>
-     * Offsets that are never delivered as records (removed by log compaction, or used by
-     * transaction control records) are included in the range of the poll that skipped them:
-     * the range starts right after the previous poll's range and ends at the consumer position
-     * minus one. Without this, such offsets leave gaps that {@link TopicPartitionCommitTracker}
-     * can never close, and commits for the partition stop.
-     */
     private <T> Range<Long> getPolledOffsetRange(final TopicPartition topicPartition,
                                                  final List<ConsumerRecord<String, T>> partitionRecords) {
         final long firstOffset = partitionRecords.get(0).offset();
