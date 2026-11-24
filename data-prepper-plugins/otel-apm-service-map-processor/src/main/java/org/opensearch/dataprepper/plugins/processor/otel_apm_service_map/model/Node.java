@@ -10,12 +10,17 @@
 
 package org.opensearch.dataprepper.plugins.processor.otel_apm_service_map.model;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.function.ToIntFunction;
 
 public class Node {
 
@@ -99,12 +104,23 @@ public class Node {
                 '}';
     }
 
+    /**
+     * Node identity ({@code environment} + {@code name}) plus optional descriptive keys (the
+     * platform and infrastructure keys of a service, e.g. {@code k8s.cluster.name}). Only
+     * {@code environment} and {@code name} are identity: the descriptive keys are serialized flat
+     * next to them but are deliberately excluded from equals/hashCode, so they never change a
+     * {@code nodeConnectionHash} or split one logical node into several (the same pattern as
+     * {@link Node#getDependencyAttributes()}).
+     */
     public static class KeyAttributes {
         @JsonProperty("environment")
         private final String environment;
 
         @JsonProperty("name")
         private final String name;
+
+        /** Descriptive keys; each holds the distinct values observed for this node (bounded by the caller). */
+        private final Map<String, Set<String>> descriptiveAttributes = new TreeMap<>();
 
         public KeyAttributes(final String environment, final String name) {
             this.environment = environment;
@@ -117,6 +133,36 @@ public class Node {
 
         public String getName() {
             return name;
+        }
+
+        /** Descriptive keys, serialized flat next to environment / name; values are arrays. */
+        @JsonAnyGetter
+        public Map<String, Set<String>> getDescriptiveAttributes() {
+            return Collections.unmodifiableMap(descriptiveAttributes);
+        }
+
+        /**
+         * Adds a descriptive value; a key holds at most {@code maxValues} distinct values.
+         * Identity keys ({@code environment}, {@code name}) are ignored.
+         */
+        public void addDescriptiveAttribute(final String key, final String value, final int maxValues) {
+            if (key == null || value == null || "environment".equals(key) || "name".equals(key)) {
+                return;
+            }
+            final Set<String> values = descriptiveAttributes.computeIfAbsent(key, k -> new TreeSet<>());
+            if (values.size() < maxValues || values.contains(value)) {
+                values.add(value);
+            }
+        }
+
+        /** Merges another node's descriptive values into this one, with per-key bounds. */
+        public void mergeDescriptiveAttributes(final KeyAttributes other,
+                                               final ToIntFunction<String> maxValues) {
+            if (other == null || other == this) {
+                return;
+            }
+            other.descriptiveAttributes.forEach((key, values) ->
+                    values.forEach(value -> addDescriptiveAttribute(key, value, maxValues.applyAsInt(key))));
         }
 
         @Override
@@ -136,6 +182,7 @@ public class Node {
             return "KeyAttributes{" +
                     "environment='" + environment + '\'' +
                     ", name='" + name + '\'' +
+                    (descriptiveAttributes.isEmpty() ? "" : ", descriptive=" + descriptiveAttributes) +
                     '}';
         }
     }

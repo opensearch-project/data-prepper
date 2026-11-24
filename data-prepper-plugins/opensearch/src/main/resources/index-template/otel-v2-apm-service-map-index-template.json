@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "template": {
     "mappings": {
       "date_detection": false,
@@ -28,6 +28,20 @@
             "match_mapping_type": "string",
             "mapping": {
               "type": "keyword"
+            }
+          }
+        },
+        {
+          "string_key_attributes": {
+            "path_match": "*.keyAttributes.*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "fields": {
+                "keyword": {
+                  "type": "keyword"
+                }
+              }
             }
           }
         },

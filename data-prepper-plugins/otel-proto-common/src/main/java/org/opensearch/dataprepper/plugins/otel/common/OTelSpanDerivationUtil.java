@@ -67,13 +67,23 @@ public class OTelSpanDerivationUtil {
      * @param spans List of spans to process
      */
     public static void deriveServerSpanAttributes(final List<Span> spans) {
+        deriveServerSpanAttributes(spans, EnvironmentSource.PLATFORM_FIRST);
+    }
+
+    /**
+     * Same as {@link #deriveServerSpanAttributes(List)}, deriving the environment in the given precedence.
+     *
+     * @param spans List of spans to process
+     * @param environmentSource precedence for the derived environment
+     */
+    public static void deriveServerSpanAttributes(final List<Span> spans, final EnvironmentSource environmentSource) {
         if (spans == null) {
             return;
         }
 
         for (final Span span : spans) {
             if (span != null && isServerSpan(span)) {
-                deriveAttributesForSpan(span);
+                deriveAttributesForSpan(span, environmentSource);
             }
         }
     }
@@ -115,6 +125,13 @@ public class OTelSpanDerivationUtil {
      * @param span The span to derive attributes for
      */
     public static void deriveAttributesForSpan(final Span span) {
+        deriveAttributesForSpan(span, EnvironmentSource.PLATFORM_FIRST);
+    }
+
+    /**
+     * Same as {@link #deriveAttributesForSpan(Span)}, deriving the environment in the given precedence.
+     */
+    public static void deriveAttributesForSpan(final Span span, final EnvironmentSource environmentSource) {
         try {
             final Map<String, Object> spanAttributes = span.getAttributes();
 
@@ -135,7 +152,7 @@ public class OTelSpanDerivationUtil {
             if (resource != null) {
                 combinedAttributes.put("resource", resource);
             }
-            final String environment = computeEnvironment(combinedAttributes);
+            final String environment = computeEnvironment(combinedAttributes, environmentSource);
 
             // Add derived attributes using our safe attribute setting method
             putAttribute(span, DERIVED_FAULT_ATTRIBUTE, String.valueOf(errorFault.fault));
@@ -412,6 +429,26 @@ public class OTelSpanDerivationUtil {
      * @return Computed environment string
      */
     public static String computeEnvironment(final Map<String, Object> spanAttributes) {
+        return computeEnvironment(spanAttributes, EnvironmentSource.PLATFORM_FIRST);
+    }
+
+    /**
+     * Compute environment from resource attributes, in the given precedence.
+     *
+     * @param spanAttributes The span attributes containing resource information
+     * @param source PLATFORM_FIRST (AWS platform, then deployment environment) or DEPLOYMENT_FIRST
+     *               (deployment environment, then AWS platform)
+     * @return Computed environment string; {@code generic:default} when nothing applies
+     */
+    public static String computeEnvironment(final Map<String, Object> spanAttributes, final EnvironmentSource source) {
+        if (source == EnvironmentSource.DEPLOYMENT_FIRST) {
+            final String deployment = ServiceEnvironmentProviders.getDeploymentEnvironmentOrNull(spanAttributes);
+            if (deployment != null) {
+                return deployment;
+            }
+            final String platform = ServiceEnvironmentProviders.getAwsServiceEnvironment(spanAttributes);
+            return platform != null ? platform : "generic:default";
+        }
         String env = ServiceEnvironmentProviders.getAwsServiceEnvironment(spanAttributes);
         if (env == null) {
             env = ServiceEnvironmentProviders.getDeploymentEnvironment(spanAttributes);

@@ -14,6 +14,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.InetAddresses;
 import lombok.Getter;
 
+import org.opensearch.dataprepper.plugins.otel.common.EnvironmentSource;
 import org.opensearch.dataprepper.plugins.otel.common.OTelSpanDerivationUtil;
 import org.opensearch.dataprepper.plugins.otel.common.RemoteOperationAndService;
 import org.slf4j.Logger;
@@ -128,6 +129,27 @@ public class SpanStateData implements Serializable {
                          final Map<String, String> groupByAttributes,
                          final Map<String, Object> spanAttributes,
                          final DependencyNamingPolicy namingPolicy) {
+        this(serviceName, spanId, parentSpanId, traceId, spanKind, spanName, operation, durationInNanos, status,
+                endTime, groupByAttributes, spanAttributes, namingPolicy, EnvironmentSource.PLATFORM_FIRST);
+    }
+
+    /**
+     * @param environmentSource precedence for the derived environment
+     */
+    public SpanStateData(final String serviceName,
+                         final String spanId,
+                         final String parentSpanId,
+                         final String traceId,
+                         final String spanKind,
+                         final String spanName,
+                         final String operation,
+                         final Long durationInNanos,
+                         final String status,
+                         final String endTime,
+                         final Map<String, String> groupByAttributes,
+                         final Map<String, Object> spanAttributes,
+                         final DependencyNamingPolicy namingPolicy,
+                         final EnvironmentSource environmentSource) {
         this.serviceName = serviceName;
         this.spanId = spanId;
         this.parentSpanId = parentSpanId;
@@ -146,7 +168,7 @@ public class SpanStateData implements Serializable {
 
         this.operationName = OTelSpanDerivationUtil.computeOperationName(spanName, spanAttributes);
 
-        this.environment = OTelSpanDerivationUtil.computeEnvironment(spanAttributes);
+        this.environment = OTelSpanDerivationUtil.computeEnvironment(spanAttributes, environmentSource);
 
         // Derived remote-dependency identity is computed only for the span kinds that can target an
         // external dependency: CLIENT calls and messaging PRODUCER/CONSUMER spans. SERVER/INTERNAL
