@@ -54,6 +54,7 @@ public class SqsWorkerCommon {
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private volatile boolean isStopped;
+    private volatile boolean isSqsClientClosed;
     private int failedAttemptCount;
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsMessagesDeletedCounter;
@@ -149,7 +150,7 @@ public class SqsWorkerCommon {
     }
 
     public void deleteSqsMessages(final String queueUrl, final SqsClient sqsClient, final List<DeleteMessageBatchRequestEntry> entries) {
-        if (entries == null || entries.isEmpty() || isStopped) {
+        if (entries == null || entries.isEmpty() || isSqsClientClosed) {
             return;
         }
 
@@ -226,6 +227,10 @@ public class SqsWorkerCommon {
 
     public void stop() {
         isStopped = true;
+    }
+
+    public void markSqsClientClosed() {
+        isSqsClientClosed = true;
     }
 
     public void recordSqsException(final AwsServiceException e) {
