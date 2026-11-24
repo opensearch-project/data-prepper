@@ -67,6 +67,7 @@ import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthentication
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -128,6 +129,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -479,6 +481,26 @@ class OTelMetricsSourceTest {
 
         assertThat(actualException.getStatus(), notNullValue());
         assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.UNAUTHENTICATED));
+    }
+
+    @Test
+    void circuit_breaker_is_not_applied_when_the_buffer_is_written_off_heap_only() {
+        when(buffer.isWrittenOffHeapOnly()).thenReturn(true);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        SOURCE = new OTelMetricsSource(
+                oTelMetricsSourceConfig,
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        SOURCE.start(buffer);
+
+        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+
+        assertThat(client.export(createExportMetricsRequest()), notNullValue());
+        verifyNoInteractions(circuitBreaker);
     }
 
     @Test
@@ -942,7 +964,8 @@ class OTelMetricsSourceTest {
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder, never()).decorator(isA(Function.class));
+        // Only the circuit breaker decorator, which is always installed.
+        verify(serverBuilder, times(1)).decorator(isA(Function.class));
     }
 
     @Test

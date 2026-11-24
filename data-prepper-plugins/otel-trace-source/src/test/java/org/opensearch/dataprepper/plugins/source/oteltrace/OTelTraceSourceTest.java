@@ -15,12 +15,16 @@ import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
@@ -58,6 +62,7 @@ import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthentication
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -115,6 +120,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -664,7 +670,61 @@ class OTelTraceSourceTest {
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder, never()).decorator(isA(Function.class));
+        // Only the circuit breaker decorator, which is always installed.
+        verify(serverBuilder, times(1)).decorator(isA(Function.class));
+    }
+
+    @Test
+    void circuit_breaker_provided_registers_HTTP_decorator_that_rejects_open_breaker_requests() throws Exception {
+        when(server.stop()).thenReturn(completableFuture);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreaker.isOpen()).thenReturn(true);
+        final OTelTraceSource source = new OTelTraceSource(
+                oTelTraceSourceConfig,
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        @SuppressWarnings({"rawtypes"})
+        final ArgumentCaptor<Function> decoratorCaptor = ArgumentCaptor.forClass(Function.class);
+        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            source.start(buffer);
+        }
+        verify(serverBuilder, times(1)).decorator(decoratorCaptor.capture());
+        verify(serverBuilder).service(isA(GrpcService.class));
+        final HttpService innerService = (ctx, req) -> HttpResponse.of(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        final HttpService decoratedService = (HttpService) decoratorCaptor.getValue().apply(innerService);
+        final HttpRequest request = HttpRequest.of(HttpMethod.POST, "/opentelemetry.proto.collector.trace.v1.TraceService/Export");
+        final ServiceRequestContext ctx = ServiceRequestContext.of(request);
+
+        final AggregatedHttpResponse response = decoratedService.serve(ctx, request).aggregate().join();
+
+        assertThat(response.status(), equalTo(HttpStatus.TOO_MANY_REQUESTS));
+        verify(circuitBreaker, times(1)).isOpen();
+        source.stop();
+    }
+
+    @Test
+    void circuit_breaker_is_not_applied_when_the_buffer_is_written_off_heap_only() {
+        when(buffer.isWrittenOffHeapOnly()).thenReturn(true);
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        SOURCE = new OTelTraceSource(
+                oTelTraceSourceConfig,
+                pluginMetrics,
+                pluginFactory,
+                certificateProviderFactory,
+                pipelineDescription,
+                circuitBreaker);
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+
+        assertThat(client.export(createExportTraceRequest()), notNullValue());
+        verifyNoInteractions(circuitBreaker);
     }
 
     @Test
