@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,16 +40,24 @@ public class SinkThreadTest {
         when(sink.isReady()).thenReturn(false);
         sinkThread = new SinkThread(sink, 5, 100);
         sinkThread.run();
-        verify(sink, times(6)).isReady();
+        verify(sink, times(11)).isReady();
         verify(sink, times(5)).doInitialize();
-        when(sink.isReady()).thenReturn(false).thenReturn(true);
+        when(sink.isReady()).thenReturn(false).thenReturn(false).thenReturn(true);
         sinkThread.run();
-        verify(sink, times(8)).isReady();
-        when(sink.isReady()).thenReturn(false).thenReturn(true);
+        verify(sink, times(14)).isReady();
+        when(sink.isReady()).thenReturn(false).thenReturn(false).thenReturn(true);
         lenient().doAnswer((i) -> {
             throw new InterruptedException("Fake interrupt");
         }).when(sink).doInitialize();
         sinkThread.run();
         verify(sink, times(7)).doInitialize();
+    }
+
+    @Test
+    public void run_when_sink_becomes_ready_while_waiting_does_not_call_doInitialize() {
+        when(sink.isReady()).thenReturn(false).thenReturn(true);
+        sinkThread = new SinkThread(sink, 5, 10);
+        sinkThread.run();
+        verify(sink, never()).doInitialize();
     }
 }
