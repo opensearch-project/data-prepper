@@ -171,6 +171,14 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
         for (Record<Span> record : records) {
             final Span span = record.getData();
+            if (genAiEnrichmentEnabled) {
+                // Normalize vendor attributes and strip conflicting sub-keys once, as the span arrives, so
+                // that holding a root and recording a GenAI root see the same attributes as the
+                // enrichment and the marking. Spans written later (waiting children, orphans flushed
+                // without their root, held roots) were normalized here when they arrived.
+                GenAiEnrichmentHelper.normalizeAttributes(span);
+                GenAiEnrichmentHelper.stripFlattenedSubkeys(span);
+            }
             processSpan(span, processedSpans);
             fillInServiceName(span);
         }
@@ -181,8 +189,6 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
             // Held roots whose hold expired, and all of them on shutdown, join the batch, so they are
             // enriched and marked like any other root.
             processedSpans.addAll(releaseHeldRootSpans());
-            // Normalize attributes and strip conflicting sub-keys once, for both passes.
-            GenAiEnrichmentHelper.normalizeBatch(processedSpans);
             // Record the batch's children and enrich its roots from every child recorded so far.
             GenAiRootEnrichment.enrichNormalizedRoots(processedSpans, genAiRootEnrichmentState, genAiRootPropagation);
             // Mark agent roots and enrich roots from the batch.

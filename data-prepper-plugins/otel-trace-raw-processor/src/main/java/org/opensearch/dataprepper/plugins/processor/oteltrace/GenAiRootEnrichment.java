@@ -108,8 +108,8 @@ final class GenAiRootEnrichment {
     }
 
     /**
-     * Whether a span is itself a GenAI span or is marked {@code true} at the source. Reads the
-     * attributes as they arrived, before vendor normalization.
+     * Whether a span is itself a GenAI span or is marked {@code true} at the source. The processor
+     * normalizes vendor attributes before calling this.
      */
     static boolean isGenAiOrMarkedSpan(final Span span) {
         final Map<String, Object> attributes = span.getAttributes();
@@ -124,8 +124,8 @@ final class GenAiRootEnrichment {
      * Whether a trace root is a GenAI root that {@code propagation} enriches and that is still
      * missing a model or token usage {@code state} cannot provide yet, so holding it for late
      * children could complete it. A non-GenAI root is never awaited: holding every root that might
-     * turn out to belong to a GenAI trace would delay all traffic. Reads the attributes as they
-     * arrived, before vendor normalization.
+     * turn out to belong to a GenAI trace would delay all traffic. The processor normalizes vendor
+     * attributes before calling this, so a vendor root and its vendor model and token keys count.
      */
     static boolean rootAwaitsEnrichment(final Span rootSpan, final GenAiRootEnrichmentState state,
                                         final GenAiRootPropagation propagation) {
