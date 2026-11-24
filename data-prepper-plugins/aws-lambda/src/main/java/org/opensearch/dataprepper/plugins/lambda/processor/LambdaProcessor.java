@@ -32,6 +32,7 @@ import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
@@ -39,7 +40,6 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.ResponseHandling;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.io.IOException;
@@ -77,6 +77,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
     public static final String RECORDS_EXCEEDING_THRESHOLD = "recordsExceedingThreshold";
     public static final String CIRCUIT_BREAKER_TRIPS = "circuitBreakerTrips";
+    public static final String AVAILABLE_CONCURRENCY = "lambdaClientAvailableConcurrency";
+    public static final String CONNECTION_POOL_EXHAUSTION = "connectionPoolExhaustion";
     private static final byte[] NO_RETURN_RESPONSE = "null".getBytes(StandardCharsets.UTF_8);
     private static final String EXCEEDING_PAYLOAD_LIMIT_EXCEPTION = "Status Code: 413";
 
@@ -92,9 +94,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     final Counter numberOfRequestsFailedCounter;
     final Counter lambdaResponseRecordsCounter;
     final Counter batchExceedingThresholdCounter;
+    final Counter connectionPoolExhaustionCounter;
     final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
-    final LambdaAsyncClient lambdaAsyncClient;
+    final BoundedLambdaAsyncClient lambdaAsyncClient;
+    private final ClientOptions clientOptions;
     final DistributionSummary requestPayloadMetric;
     final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
@@ -140,6 +144,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
         this.lambdaResponseRecordsCounter = pluginMetrics.counter(LAMBDA_RESPONSE_RECORDS_COUNTER);
         this.batchExceedingThresholdCounter = pluginMetrics.counter(RECORDS_EXCEEDING_THRESHOLD);
+        this.connectionPoolExhaustionCounter = pluginMetrics.counter(CONNECTION_POOL_EXHAUSTION);
 
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
@@ -172,15 +177,16 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         jsonOutputCodecConfig = new JsonOutputCodecConfig();
         jsonOutputCodecConfig.setKeyName(lambdaProcessorConfig.getBatchOptions().getKeyName());
 
-        ClientOptions clientOptions = lambdaProcessorConfig.getClientOptions();
-        if (clientOptions == null) {
-            clientOptions = new ClientOptions();
-        }
-        lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
+        this.clientOptions = lambdaProcessorConfig.getClientOptions() != null
+                ? lambdaProcessorConfig.getClientOptions()
+                : new ClientOptions();
+        lambdaAsyncClient = LambdaClientFactory.createBoundedAsyncLambdaClient(
                 lambdaProcessorConfig.getAwsAuthenticationOptions(),
                 awsCredentialsSupplier,
-                clientOptions
+                this.clientOptions
         );
+        pluginMetrics.gauge(AVAILABLE_CONCURRENCY, lambdaAsyncClient,
+                client -> (double) client.getAvailableConcurrency());
 
 
         // Select the correct strategy based on the configuration
@@ -241,6 +247,10 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 .expireAfterWrite(cacheConfig.getTtl(), TimeUnit.SECONDS)
                 .recordStats()
                 .build();
+    }
+
+    ClientOptions getClientOptions() {
+        return clientOptions;
     }
 
     @VisibleForTesting

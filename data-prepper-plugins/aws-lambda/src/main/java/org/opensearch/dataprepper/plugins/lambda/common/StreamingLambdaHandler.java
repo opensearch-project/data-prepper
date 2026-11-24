@@ -15,12 +15,12 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ResponseHandling;
 import org.opensearch.dataprepper.plugins.lambda.common.config.StreamingOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeWithResponseStreamResponseHandler;
@@ -40,14 +40,14 @@ import java.util.concurrent.CompletableFuture;
 public class StreamingLambdaHandler {
     private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaHandler.class);
 
-    private final LambdaAsyncClient lambdaAsyncClient;
+    private final BoundedLambdaAsyncClient lambdaAsyncClient;
     private final PluginFactory pluginFactory;
     private final InputCodec responseCodec;
     private final String functionName;
     private final StreamingOptions streamingOptions;
 
     public StreamingLambdaHandler(
-            LambdaAsyncClient lambdaAsyncClient, 
+            BoundedLambdaAsyncClient lambdaAsyncClient, 
             PluginFactory pluginFactory, 
             InputCodec responseCodec,
             String functionName,

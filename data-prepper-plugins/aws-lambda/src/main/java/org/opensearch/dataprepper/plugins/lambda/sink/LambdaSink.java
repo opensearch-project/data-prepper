@@ -26,15 +26,16 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferSynchronized;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.util.LambdaRetryStrategy;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.net.HttpURLConnection;
@@ -61,6 +62,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     public static final String LAMBDA_LATENCY_METRIC = "lambdaFunctionLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
+    public static final String AVAILABLE_CONCURRENCY = "lambdaClientAvailableConcurrency";
+    public static final String CONNECTION_POOL_EXHAUSTION = "connectionPoolExhaustion";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaSink.class);
     private static final String BUCKET = "bucket";
@@ -71,7 +74,9 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     private final Counter numberOfRequestsFailedCounter;
     private final LambdaSinkConfig lambdaSinkConfig;
     private final ExpressionEvaluator expressionEvaluator;
-    private final LambdaAsyncClient lambdaAsyncClient;
+    private final BoundedLambdaAsyncClient lambdaAsyncClient;
+    private final ClientOptions clientOptions;
+    private final Counter connectionPoolExhaustionCounter;
     private final DistributionSummary responsePayloadMetric;
     private final Timer lambdaLatencyMetric;
     private final DistributionSummary requestPayloadMetric;
@@ -117,15 +122,17 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
-        ClientOptions clientOptions = lambdaSinkConfig.getClientOptions();
-        if (clientOptions == null) {
-            clientOptions = new ClientOptions();
-        }
-        this.lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
+        this.clientOptions = lambdaSinkConfig.getClientOptions() != null
+                ? lambdaSinkConfig.getClientOptions()
+                : new ClientOptions();
+        this.lambdaAsyncClient = LambdaClientFactory.createBoundedAsyncLambdaClient(
                 lambdaSinkConfig.getAwsAuthenticationOptions(),
                 awsCredentialsSupplier,
-                clientOptions
+                this.clientOptions
         );
+        this.connectionPoolExhaustionCounter = pluginMetrics.counter(CONNECTION_POOL_EXHAUSTION);
+        pluginMetrics.gauge(AVAILABLE_CONCURRENCY, lambdaAsyncClient,
+                client -> (double) client.getAvailableConcurrency());
         if (lambdaSinkConfig.getDlqPluginSetting() != null) {
             this.dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, lambdaSinkConfig.getDlq(), lambdaSinkConfig.getAwsAuthenticationOptions());
         }
@@ -316,7 +323,12 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
             CompletableFuture<InvokeResponse> future = entry.getValue();
 
             try {
-                InvokeResponse response = future.join();
+                InvokeResponse response = LambdaRetryStrategy.joinWithConnectionPoolBackoff(
+                        future,
+                        () -> LambdaCommonHandler.invokeSingleBuffer(lambdaSinkConfig,
+                                lambdaAsyncClient, inputBuffer),
+                        clientOptions,
+                        connectionPoolExhaustionCounter);
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
                 requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());

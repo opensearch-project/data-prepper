@@ -22,6 +22,15 @@ import java.util.Set;
 
 public final class LambdaClientFactory {
 
+  public static BoundedLambdaAsyncClient createBoundedAsyncLambdaClient(
+          final AwsAuthenticationOptions awsAuthenticationOptions,
+          final AwsCredentialsSupplier awsCredentialsSupplier,
+          final ClientOptions clientOptions) {
+    final LambdaAsyncClient lambdaAsyncClient = createAsyncLambdaClient(
+            awsAuthenticationOptions, awsCredentialsSupplier, clientOptions);
+    return new BoundedLambdaAsyncClient(lambdaAsyncClient, clientOptions.getMaxConcurrency());
+  }
+
   public static LambdaAsyncClient createAsyncLambdaClient(
           final AwsAuthenticationOptions awsAuthenticationOptions,
           final AwsCredentialsSupplier awsCredentialsSupplier,

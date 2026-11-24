@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
@@ -187,7 +188,7 @@ public class LambdaSinkIT {
 
         // Tell the mock to skip attaching MicrometerMetricPublisher:
         factoryMock.when(() ->
-                LambdaClientFactory.createAsyncLambdaClient(eq(awsAuthenticationOptions),
+                LambdaClientFactory.createBoundedAsyncLambdaClient(eq(awsAuthenticationOptions),
                         eq(awsCredentialsSupplier), eq(clientOptions))
         ).thenAnswer(inv -> {
             // Build a normal client but omit .addMetricPublisher(...)
@@ -207,12 +208,12 @@ public class LambdaSinkIT {
             AwsCredentialsOptions awsCredentialsOptions = convertToCredentialsOptions(awsAuthenticationOptions);
             AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
 
-            return LambdaAsyncClient.builder()
+            return new BoundedLambdaAsyncClient(LambdaAsyncClient.builder()
                     .region(awsAuthenticationOptions.getAwsRegion())
                     .credentialsProvider(awsCredentialsProvider)
                     .overrideConfiguration(overrideConfig)
                     .httpClient(httpClient)
-                    .build();
+                    .build(), clientOptions.getMaxConcurrency());
         });
     }
 

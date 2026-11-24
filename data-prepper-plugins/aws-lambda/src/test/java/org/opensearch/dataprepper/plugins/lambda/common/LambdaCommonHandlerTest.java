@@ -13,8 +13,8 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessorConfig;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
@@ -43,7 +43,7 @@ import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUti
 class LambdaCommonHandlerTest {
 
     @Mock
-    private LambdaAsyncClient lambdaAsyncClient;
+    private BoundedLambdaAsyncClient lambdaAsyncClient;
 
     @Mock
     private OutputCodecContext outputCodecContext;

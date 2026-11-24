@@ -54,6 +54,7 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.BoundedLambdaAsyncClient;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
@@ -500,11 +501,11 @@ public class LambdaProcessorIT {
                     .build();
 
             mockedFactory.when(() ->
-                            LambdaClientFactory.createAsyncLambdaClient(
+                            LambdaClientFactory.createBoundedAsyncLambdaClient(
                                     any(AwsAuthenticationOptions.class),
                                     any(AwsCredentialsSupplier.class),
                                     any(ClientOptions.class)))
-                    .thenReturn(clientWithCountingCondition);
+                    .thenReturn(new BoundedLambdaAsyncClient(clientWithCountingCondition, 5));
 
             // 7) Instantiate the real LambdaProcessor
             when(pluginSetting.getName()).thenReturn("lambda-processor");
