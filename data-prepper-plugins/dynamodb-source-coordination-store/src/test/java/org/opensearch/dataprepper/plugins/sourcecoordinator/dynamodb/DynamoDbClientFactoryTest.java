@@ -13,6 +13,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
@@ -65,7 +66,7 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbClient provideDynamoDbClient = createObjectUnderTest().provideDynamoDbClient(region, null, null);
+            final DynamoDbClient provideDynamoDbClient = createObjectUnderTest().provideDynamoDbClient(region, null, null, mock(MetricPublisher.class));
 
             assertThat(provideDynamoDbClient, equalTo(dynamoDbClient));
         }
@@ -111,7 +112,7 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbClient providedDynamoDbClient = createObjectUnderTest().provideDynamoDbClient(region, stsRoleArn, null);
+            final DynamoDbClient providedDynamoDbClient = createObjectUnderTest().provideDynamoDbClient(region, stsRoleArn, null, mock(MetricPublisher.class));
 
             assertThat(providedDynamoDbClient, equalTo(dynamoDbClient));
         }

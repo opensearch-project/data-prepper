@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
     static final String PARTITIONS_COMPLETED_COUNT = "partitionsComplete";
     static final String PARTITION_CREATED_COUNT = "partitionsCreated";
+    static final String ACQUIRE_PARTITION_LATENCY = "acquirePartitionLatency";
 
     /**
      * Default time out duration for lease.
@@ -138,7 +140,10 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Not available for global state.
         Objects.requireNonNull(partitionType);
         LOG.debug("Try to acquire an available {} partition", partitionType);
+        final long startNanos = System.nanoTime();
         Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.tryAcquireAvailablePartition(this.sourceIdentifier + "|" + partitionType, hostName, DEFAULT_LEASE_TIMEOUT);
+        pluginMetrics.timerWithTags(ACQUIRE_PARTITION_LATENCY, "partitionType", partitionType, "result", sourceItem.isEmpty() ? "none" : "acquired")
+                .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
         if (sourceItem.isEmpty()) {
             LOG.debug("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
             return Optional.empty();

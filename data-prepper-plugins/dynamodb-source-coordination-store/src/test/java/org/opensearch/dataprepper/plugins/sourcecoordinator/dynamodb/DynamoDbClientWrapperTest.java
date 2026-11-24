@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
@@ -34,6 +36,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveRequest;
@@ -66,10 +69,12 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -94,6 +99,9 @@ public class DynamoDbClientWrapperTest {
     @Mock
     private DynamoStoreSettings dynamoStoreSettings;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private String region;
     private String stsRoleArn;
     private String sourceIdentifier;
@@ -103,6 +111,7 @@ public class DynamoDbClientWrapperTest {
         region = "us-east-1";
         stsRoleArn = "arn:aws:iam::123456789012:role/source-coordination-ddb-role";
         sourceIdentifier = UUID.randomUUID().toString();
+        lenient().when(pluginMetrics.counterWithTags(anyString(), any(String[].class))).thenReturn(mock(Counter.class));
     }
 
     private DynamoDbClientWrapper createObjectUnderTest() {
@@ -112,7 +121,7 @@ public class DynamoDbClientWrapperTest {
 
         try (final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
             dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
-            return DynamoDbClientWrapper.create(dynamoDbClient);
+            return DynamoDbClientWrapper.create(dynamoDbClient, pluginMetrics);
         }
     }
 
@@ -549,6 +558,53 @@ public class DynamoDbClientWrapperTest {
         assertThat(expiryTimeArgumentCaptor.getValue(), greaterThan(Instant.now().getEpochSecond()));
 
         verify(acquiredItem).setPartitionPriority(newPartitionOwnershipTimeout.toString());
+    }
+
+    @Test
+    void getAvailablePartition_tags_acquire_write_failure_with_exception_type() throws NoSuchFieldException, IllegalAccessException {
+        final String ownerId = UUID.randomUUID().toString();
+        final String sourceStatusCombinationKey = String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED);
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        final DynamoDbIndex<DynamoDbSourcePartitionItem> sourceStatusIndex = mock(DynamoDbIndex.class);
+        given(table.index(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX)).willReturn(sourceStatusIndex);
+
+        final DynamoDbSourcePartitionItem throttledItem = mock(DynamoDbSourcePartitionItem.class);
+        final DynamoDbSourcePartitionItem conflictedItem = mock(DynamoDbSourcePartitionItem.class);
+        final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
+        given(throttledItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(conflictedItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(acquiredItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+
+        final SdkIterable<Page<DynamoDbSourcePartitionItem>> pageSdkIterable = () -> {
+            final Page<DynamoDbSourcePartitionItem> page = mock(Page.class);
+            given(page.items()).willReturn(List.of(throttledItem, conflictedItem, acquiredItem));
+            return List.of(page).iterator();
+        };
+
+        doThrow(ProvisionedThroughputExceededException.builder().build())
+                .doThrow(ConditionalCheckFailedException.builder().build())
+                .doNothing()
+                .when(table).putItem(any(PutItemEnhancedRequest.class));
+        given(sourceStatusIndex.query(any(QueryEnhancedRequest.class))).willReturn(pageSdkIterable);
+
+        final Counter throttledCounter = mock(Counter.class);
+        final Counter conflictCounter = mock(Counter.class);
+        given(pluginMetrics.counterWithTags("acquireWriteFailures", "status", "UNASSIGNED",
+                "exception", "ProvisionedThroughputExceededException")).willReturn(throttledCounter);
+        given(pluginMetrics.counterWithTags("acquireWriteFailures", "status", "UNASSIGNED",
+                "exception", "ConditionalCheckFailedException")).willReturn(conflictCounter);
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
+                ownerId, Duration.ofMinutes(1), SourcePartitionStatus.UNASSIGNED, sourceStatusCombinationKey, 10, null);
+
+        assertThat(result.isPresent(), equalTo(true));
+        assertThat(result.get(), equalTo(acquiredItem));
+        verify(throttledCounter).increment();
+        verify(conflictCounter).increment();
     }
 
     @ParameterizedTest

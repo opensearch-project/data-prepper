@@ -10,6 +10,7 @@
 package org.opensearch.dataprepper.core.sourcecoordination.enhanced;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator.ACQUIRE_PARTITION_LATENCY;
 import static org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator.PARTITIONS_COMPLETED_COUNT;
 import static org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator.PARTITION_CREATED_COUNT;
 
@@ -58,6 +60,9 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Timer latencyTimer;
 
     @Mock
     private Counter partitonsCreatedCounter;
@@ -156,6 +161,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_acquireAvailablePartition_should_run_correctly() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any()))
                 .willReturn(Optional.of(sourcePartitionStoreItem))
                 .willReturn(Optional.of(sourcePartitionStoreItem))
@@ -177,6 +183,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_saveProgressStateForPartition() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
 
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any()))
                 .willReturn(Optional.of(sourcePartitionStoreItem))
@@ -196,6 +203,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_renewPartitionOwnership_extends_the_lease_on_the_cached_item_and_leaves_progress_state_alone() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any()))
                 .willReturn(Optional.of(sourcePartitionStoreItem));
         when(sourcePartitionStoreItem.getPartitionOwnershipTimeout()).thenReturn(Instant.now().plus(Duration.ofMinutes(1)));
@@ -217,6 +225,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_renewPartitionOwnership_does_nothing_once_the_lease_has_been_released() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any()))
                 .willReturn(Optional.of(sourcePartitionStoreItem));
         coordinator = createObjectUnderTest();
@@ -234,6 +243,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_giveUpPartition() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         coordinator = createObjectUnderTest();
@@ -254,6 +264,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_completePartition() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
         coordinator = createObjectUnderTest();
 
@@ -275,6 +286,7 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
 
     @Test
     void test_closePartition() {
+        when(pluginMetrics.timerWithTags(eq(ACQUIRE_PARTITION_LATENCY), any(String[].class))).thenReturn(latencyTimer);
         given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
         coordinator = createObjectUnderTest();
 
