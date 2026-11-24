@@ -5,20 +5,37 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
+import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.json.JsonSchema;
+import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -27,336 +44,207 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.function.IntFunction;
 
+import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS;
+import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY;
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer.setAuthProperties;
 
 public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
-    public static class AvroRecord {
-          @JsonProperty
-          public String message;
+    private static final Logger LOG = LoggerFactory.getLogger(ConfluentKafkaProducerConsumerWithSchemaRegistryIT.class);
+    private static final int NUMBER_OF_RECORDS = 3;
+    private static final long FIRST_COUNT = 9_007_199_254_740_993L;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-          @JsonProperty
-          public Integer ident;
+    @ParameterizedTest(name = "Avro round trip, latest schema = {0}")
+    @ValueSource(booleans = {false, true})
+    void avroRecords_preserveFieldsKeysAndOffsets(final boolean useLatestSchema) throws Exception {
+        final Schema schema = new Schema.Parser().parse("{\"type\":\"record\",\"name\":\"TestRecord\",\"fields\":["
+                + "{\"name\":\"message\",\"type\":\"string\"},{\"name\":\"count\",\"type\":\"long\"}]}");
 
-          @JsonProperty
-          public Number score;
+        assertRoundTrip(new AvroSchema(schema), new KafkaAvroSerializer(), index -> {
+            final GenericRecord record = new GenericData.Record(schema);
+            record.put("message", "message-" + index);
+            record.put("count", FIRST_COUNT + index);
+            return record;
+        }, useLatestSchema);
+    }
 
-          public AvroRecord() {}
+    @ParameterizedTest(name = "JSON Schema round trip, latest schema = {0}")
+    @ValueSource(booleans = {false, true})
+    void jsonSchemaRecords_preserveFieldsKeysAndOffsets(final boolean useLatestSchema) throws Exception {
+        final JsonSchema schema = new JsonSchema("{\"type\":\"object\",\"properties\":{"
+                + "\"message\":{\"type\":\"string\"},\"count\":{\"type\":\"integer\"}},"
+                + "\"required\":[\"message\",\"count\"],\"additionalProperties\":false}");
 
-          public AvroRecord(String message, Integer ident, Number score) {
-             this.message = message;
-             this.ident = ident;
-             this.score = score;
-          }
-    };
-    public static class UserRecord {
-          @JsonProperty
-          public String name;
+        assertRoundTrip(schema, new KafkaJsonSchemaSerializer<JsonNode>(), index -> JsonSchemaUtils.envelope(schema,
+                objectMapper.createObjectNode().put("message", "message-" + index).put("count", FIRST_COUNT + index)), useLatestSchema);
+    }
 
-          @JsonProperty
-          public Integer id;
+    @ParameterizedTest(name = "Protobuf round trip, latest schema = {0}")
+    @ValueSource(booleans = {false, true})
+    void protobufRecords_preserveFieldsKeysAndNumericInt64AndOffsets(final boolean useLatestSchema) throws Exception {
+        final Descriptors.Descriptor descriptor = new ProtobufSchema("syntax = \"proto3\"; package integration;"
+                + " message TestRecord { string message = 1; int64 count = 2; }").toDescriptor();
 
-          @JsonProperty
-          public Number value;
+        assertRoundTrip(new ProtobufSchema(descriptor), new KafkaProtobufSerializer<DynamicMessage>(), index -> DynamicMessage
+                .newBuilder(descriptor)
+                .setField(descriptor.findFieldByName("message"), "message-" + index)
+                .setField(descriptor.findFieldByName("count"), FIRST_COUNT + index)
+                .build(), useLatestSchema);
+    }
 
-          public UserRecord() {}
+    private <T> void assertRoundTrip(final ParsedSchema schema, final Serializer<T> serializer,
+                                    final IntFunction<T> recordFactory, final boolean useLatestSchema) throws Exception {
+        final String topic = "schema-registry-it-" + UUID.randomUUID();
+        final String subject = topic + "-value";
+        final KafkaSourceConfig sourceConfig = createSourceConfig(topic, useLatestSchema);
+        final Properties properties = new Properties();
+        final AwsCredentialsSupplier credentialsSupplier = mock(AwsCredentialsSupplier.class);
+        setAuthProperties(properties, sourceConfig, credentialsSupplier, LOG);
+        properties.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 30_000);
+        properties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 30_000);
+        properties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 10_000);
+        properties.put(VALUE_SUBJECT_NAME_STRATEGY, TopicNameStrategy.class.getName());
+        properties.put(AUTO_REGISTER_SCHEMAS, false);
 
-          public UserRecord(String name, Integer id, Number value) {
-             this.name = name;
-             this.id = id;
-             this.value = value;
-          }
-    };
+        final Map<String, Object> registryProperties = new HashMap<>();
+        registryProperties.put("schema.registry.url", sourceConfig.getSchemaConfig().getRegistryURL());
+        if (sourceConfig.getSchemaConfig().getBasicAuthCredentialsSource() != null) {
+            registryProperties.put("basic.auth.credentials.source", "USER_INFO");
+            registryProperties.put("basic.auth.user.info", sourceConfig.getSchemaConfig().getSchemaRegistryApiKey()
+                    + ":" + sourceConfig.getSchemaConfig().getSchemaRegistryApiSecret());
+        }
+        properties.putAll(registryProperties);
 
-    private int testId;
-    private double testValue;
-
-    @Mock
-    private KafkaSourceConfig jsonSourceConfig;
-
-    @Mock
-    private KafkaSourceConfig avroSourceConfig;
-
-    @Mock
-    private PluginMetrics pluginMetrics;
-
-    @Mock
-    private AcknowledgementSetManager acknowledgementSetManager;
-
-    @Mock
-    private PipelineDescription pipelineDescription;
-
-    @Mock
-    private Buffer<Record<Event>> buffer;
-
-    @Mock
-    private EncryptionConfig encryptionConfig;
-
-    @Mock
-    SchemaConfig schemaConfig;
-
-    @Mock
-    AuthConfig authConfig;
-
-    @Mock
-    private AuthConfig.SaslAuthConfig saslAuthConfig;
-
-    @Mock
-    private PlainTextAuthConfig plainTextAuthConfig;
-
-    @Mock
-    private PluginConfigObservable pluginConfigObservable;
-
-    @Mock
-    private AwsCredentialsSupplier awsCredentialsSupplier;
-
-    private KafkaSource kafkaSource;
-    private TopicConsumerConfig jsonTopicConfig;
-    private TopicConsumerConfig avroTopicConfig;
-    private Counter counter;
-    private List<Record> receivedRecords;
-
-    private String bootstrapServers;
-    private String schemaRegistryUrl;
-    private String schemaRegistryUserInfo;
-    private String jsonTopicName;
-    private String avroTopicName;
-    private String username;
-    private String password;
-    private final int numRecordsProduced = 100;
-    private AtomicInteger numRecordsReceived;
-    private String testMessage;
-
-    @BeforeEach
-    public void setup() {
-        numRecordsReceived = new AtomicInteger(0);
-        testMessage = "M_"+RandomStringUtils.randomAlphabetic(5)+"_M_";
-        jsonSourceConfig = mock(KafkaSourceConfig.class);
-        avroSourceConfig = mock(KafkaSourceConfig.class);
-        pluginMetrics = mock(PluginMetrics.class);
-        pluginConfigObservable = mock(PluginConfigObservable.class);
-	Random random = new Random();
-	testId = random.nextInt();
-	testValue = random.nextDouble();
-        authConfig = mock(AuthConfig.class);
-        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        plainTextAuthConfig = mock(PlainTextAuthConfig.class);
-        counter = mock(Counter.class);
-        buffer = mock(Buffer.class);
-        schemaConfig = mock(SchemaConfig.class);
-        receivedRecords = new ArrayList<>();
-        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
-        pipelineDescription = mock(PipelineDescription.class);
-        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
-        when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
-        when(schemaConfig.getType()).thenReturn(SchemaRegistryType.CONFLUENT);
-        when(schemaConfig.getRegistryURL()).thenReturn("https://pkc-lzvrd.us-west4.gcp.confluent.cloud:443");
-
-        when(pluginMetrics.counter(anyString())).thenReturn(counter);
-        when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
-        try {
-            doAnswer(args -> {
-                Collection<Record<Event>> bufferedRecords = (Collection<Record<Event>>)args.getArgument(0);
-                receivedRecords.addAll(bufferedRecords);
-                Iterator iter = bufferedRecords.iterator();
-                for (int i = 0; iter.hasNext(); i++) {
-                        Record<Event> record = (Record<Event>)iter.next();
-                        Event event = (Event) record.getData();
-                        String name = event.get("name", String.class);
-                        Number value = event.get("value", Number.class);
-                        if (event.toJsonString().contains(testMessage)) {
-                                numRecordsReceived.getAndAdd(1);
+        try (AdminClient admin = AdminClient.create(properties);
+             CachedSchemaRegistryClient registry = new CachedSchemaRegistryClient(
+                     sourceConfig.getSchemaConfig().getRegistryURL(), 100, registryProperties)) {
+            admin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get(30, TimeUnit.SECONDS);
+            try {
+                registry.register(subject, schema);
+                try {
+                    assertThat(registry.getSchemaMetadata(subject, 1).getSchemaType(), equalTo(schema.schemaType()));
+                    final Map<String, Object> serializerProperties = new HashMap<>(registryProperties);
+                    serializerProperties.put(VALUE_SUBJECT_NAME_STRATEGY, TopicNameStrategy.class.getName());
+                    serializerProperties.put(AUTO_REGISTER_SCHEMAS, false);
+                    serializer.configure(serializerProperties, false);
+                    try (KafkaProducer<String, T> producer = new KafkaProducer<>(properties, new StringSerializer(), serializer)) {
+                        for (int index = 0; index < NUMBER_OF_RECORDS; index++) {
+                            producer.send(new ProducerRecord<>(topic, "key-" + index, recordFactory.apply(index)))
+                                    .get(30, TimeUnit.SECONDS);
                         }
+                    }
+                    consumeAndVerify(sourceConfig, admin, credentialsSupplier);
+                } finally {
+                    registry.deleteSubject(subject);
                 }
-                return null;
-            }).when(buffer).writeAll(any(Collection.class), any(Integer.class));
-        } catch (Exception e){}
-        bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        schemaRegistryUrl = System.getProperty("tests.kafka.schema_registry_url");
-        schemaRegistryUserInfo = System.getProperty("tests.kafka.schema_registry_userinfo");
-        username = System.getProperty("tests.kafka.username");
-        password = System.getProperty("tests.kafka.password");
-
-        jsonTopicConfig = mock(TopicConsumerConfig.class);
-        jsonTopicName = System.getProperty("tests.kafka.json_topic_name");
-        when(jsonTopicConfig.getName()).thenReturn(jsonTopicName);
-        when(jsonTopicConfig.getGroupId()).thenReturn("testGroupConf");
-        when(jsonTopicConfig.getWorkers()).thenReturn(1);
-        when(jsonTopicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
-        when(jsonTopicConfig.getAutoCommit()).thenReturn(false);
-        when(jsonTopicConfig.getAutoOffsetReset()).thenReturn("earliest");
-        when(jsonTopicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
-        when(jsonTopicConfig.getSessionTimeOut()).thenReturn(Duration.ofSeconds(30));
-        when(jsonTopicConfig.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(5));
-        when(jsonTopicConfig.getConsumerMaxPollRecords()).thenReturn(100);
-        when(jsonTopicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(15));
-
-        avroTopicConfig = mock(TopicConsumerConfig.class);
-        avroTopicName = System.getProperty("tests.kafka.avro_topic_name");
-        when(avroTopicConfig.getName()).thenReturn(avroTopicName);
-        when(avroTopicConfig.getGroupId()).thenReturn("testGroupConf");
-        when(avroTopicConfig.getWorkers()).thenReturn(1);
-        when(avroTopicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
-        when(avroTopicConfig.getAutoCommit()).thenReturn(false);
-        when(avroTopicConfig.getAutoOffsetReset()).thenReturn("earliest");
-        when(avroTopicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
-        when(avroTopicConfig.getSessionTimeOut()).thenReturn(Duration.ofSeconds(30));
-        when(avroTopicConfig.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(5));
-        when(avroTopicConfig.getConsumerMaxPollRecords()).thenReturn(100);
-        when(avroTopicConfig.getMaxPollInterval()).thenReturn(Duration.ofSeconds(15));
-
-        encryptionConfig = mock(EncryptionConfig.class);
-
-        when(jsonSourceConfig.getAuthConfig()).thenReturn(authConfig);
-        when(jsonSourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
-        when(jsonSourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
-        when(jsonSourceConfig.getTopics()).thenReturn((List) List.of(jsonTopicConfig));
-        when(jsonSourceConfig.getBootstrapServers()).thenReturn(List.of(bootstrapServers));
-        when(jsonSourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
-
-        when(avroSourceConfig.getAuthConfig()).thenReturn(authConfig);
-        when(avroSourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
-        when(avroSourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
-        when(avroSourceConfig.getTopics()).thenReturn((List) List.of(avroTopicConfig));
-        when(avroSourceConfig.getBootstrapServers()).thenReturn(List.of(bootstrapServers));
-        when(avroSourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
-
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
-        when(plainTextAuthConfig.getUsername()).thenReturn(username);
-        when(plainTextAuthConfig.getPassword()).thenReturn(password);
-        when(schemaConfig.getBasicAuthCredentialsSource()).thenReturn("USER_INFO");
-        String[] userInfoParts = schemaRegistryUserInfo.split(":");
-        when(schemaConfig.getSchemaRegistryApiKey()).thenReturn(userInfoParts[0]);
-        when(schemaConfig.getSchemaRegistryApiSecret()).thenReturn(userInfoParts[1]);
-        when(schemaConfig.getRegistryURL()).thenReturn(schemaRegistryUrl);
-    }
-
-    @Test
-    public void KafkaJsonProducerConsumerTestWithSpecifiedSchemaVersion() {
-        when(schemaConfig.getVersion()).thenReturn(2);
-        produceJsonRecords(bootstrapServers,  numRecordsProduced);
-        consumeRecords(bootstrapServers, jsonSourceConfig);
-        await().atMost(Duration.ofSeconds(20)).
-                untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
-    }
-
-    @Test
-    public void KafkaJsonProducerConsumerTestWithLatestSchemaVersion() {
-        when(schemaConfig.getVersion()).thenReturn(null);
-        produceJsonRecords(bootstrapServers,  numRecordsProduced);
-        consumeRecords(bootstrapServers, jsonSourceConfig);
-        await().atMost(Duration.ofSeconds(20)).
-                untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
-    }
-
-    public void consumeRecords(String servers, KafkaSourceConfig sourceConfig) {
-        kafkaSource = new KafkaSource(
-                sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
-                null, pluginConfigObservable, awsCredentialsSupplier);
-        kafkaSource.start(buffer);
-    }
-
-    public void produceJsonRecords(String servers, int numRecords) throws SerializationException {
-        Properties properties = new Properties();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
-        properties.put("ssl.endpoint.identification.algorithm", "https");
-        properties.put("security.protocol", "SASL_SSL");
-        properties.put("sasl.mechanism", "PLAIN");
-        properties.put("request.timeout.ms", 20000);
-        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+username+"\" password=\""+password+"\";");
-        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, 
-        "io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer");
-        properties.put("basic.auth.credentials.source", "USER_INFO");
-        properties.put("schema.registry.url", schemaRegistryUrl);
-        properties.put("basic.auth.user.info", schemaRegistryUserInfo);
-
-        KafkaProducer<String, UserRecord> producer = new KafkaProducer<String, UserRecord>(properties);
-        for (int i = 0; i < numRecords; i++) {
-            String key = "key"+String.valueOf(i);
-            UserRecord userRecord = new UserRecord(testMessage+i, testId+i, testValue*(i+1));
-            ProducerRecord<String, UserRecord> record = new ProducerRecord<String, UserRecord>(jsonTopicName, key, userRecord);
-            producer.send(record);
+            } finally {
+                admin.deleteTopics(List.of(topic)).all().get(30, TimeUnit.SECONDS);
+            }
         }
-        producer.flush();
-
     }
 
-
-    @Test
-    public void KafkaAvroProducerConsumerTestWithSpecifiedSchemaVersion() {
-        when(schemaConfig.getVersion()).thenReturn(1);
-	produceAvroRecords(bootstrapServers,  numRecordsProduced);
-	consumeRecords(bootstrapServers, avroSourceConfig);
-	await().atMost(Duration.ofSeconds(20)).
-	  untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
-    }
-
-    @Test
-    public void KafkaAvroProducerConsumerTestWithLatestSchemaVersion() {
-        when(schemaConfig.getVersion()).thenReturn(null);
-        produceAvroRecords(bootstrapServers,  numRecordsProduced);
-        consumeRecords(bootstrapServers, avroSourceConfig);
-        await().atMost(Duration.ofSeconds(20)).
-                untilAsserted(() -> assertThat(numRecordsReceived.get(), equalTo(numRecordsProduced)));
-    }
-
-    public void produceAvroRecords(String servers, int numRecords) throws SerializationException {
-        Properties properties = new Properties();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
-        properties.put("ssl.endpoint.identification.algorithm", "https");
-        properties.put("security.protocol", "SASL_SSL");
-        properties.put("sasl.mechanism", "PLAIN");
-        properties.put("request.timeout.ms", 20000);
-        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\""+username+"\" password=\""+password+"\";");
-        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-          "io.confluent.kafka.serializers.KafkaAvroSerializer");
-        properties.put("basic.auth.credentials.source", "USER_INFO");
-        properties.put("schema.registry.url", schemaRegistryUrl);
-        properties.put("basic.auth.user.info", schemaRegistryUserInfo);
-
-        KafkaProducer<String, GenericRecord> producer = new KafkaProducer<String, GenericRecord>(properties);
-        String userSchema = "{\"type\":\"record\"," +
-                "\"name\":\"sampleAvroRecord\"," +
-                "\"fields\":[{\"name\":\"message\",\"type\":\"string\"}, {\"name\":\"ident\",\"type\":\"int\"}, {\"name\":\"score\",\"type\":\"double\"}]}";
-        Schema.Parser parser = new Schema.Parser();
-        Schema schema = parser.parse(userSchema);
-        for (int i = 0; i < numRecords; i++) {
-            GenericRecord avroRecord = new GenericData.Record(schema);
-            avroRecord.put("message", testMessage+i);
-            avroRecord.put("ident", testId+i);
-            avroRecord.put("score", testValue*(i+1));
-            String key = "key"+String.valueOf(i);
-            ProducerRecord<String, GenericRecord> record = new ProducerRecord<String, GenericRecord>(avroTopicName, key, avroRecord);
-            producer.send(record);
+    private void consumeAndVerify(final KafkaSourceConfig sourceConfig, final AdminClient admin,
+                                  final AwsCredentialsSupplier credentialsSupplier) throws Exception {
+        final List<Record<Event>> receivedRecords = new CopyOnWriteArrayList<>();
+        final Buffer<Record<Event>> buffer = mock(Buffer.class);
+        doAnswer(invocation -> {
+            final Collection<Record<Event>> records = invocation.getArgument(0);
+            receivedRecords.addAll(records);
+            return null;
+        }).when(buffer).writeAll(anyCollection(), anyInt());
+        final PluginMetrics metrics = mock(PluginMetrics.class);
+        when(metrics.counter(anyString())).thenReturn(mock(Counter.class));
+        when(metrics.timer(anyString())).thenReturn(mock(Timer.class));
+        final PipelineDescription pipeline = mock(PipelineDescription.class);
+        final String topic = sourceConfig.getTopics().get(0).getName();
+        when(pipeline.getPipelineName()).thenReturn(topic);
+        final KafkaSource source = new KafkaSource(sourceConfig, metrics, mock(AcknowledgementSetManager.class), pipeline,
+                null, mock(PluginConfigObservable.class), credentialsSupplier);
+        try {
+            source.start(buffer);
+            await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
+                assertThat(receivedRecords, hasSize(NUMBER_OF_RECORDS));
+                for (int index = 0; index < NUMBER_OF_RECORDS; index++) {
+                    final Event event = receivedRecords.get(index).getData();
+                    assertThat(event.get("message", String.class), equalTo("message-" + index));
+                    assertThat(event.get("count", Object.class), instanceOf(Number.class));
+                    assertThat(event.get("count", Number.class).longValue(), equalTo(FIRST_COUNT + index));
+                    assertThat(event.getMetadata().getAttribute("kafka_key"), equalTo("key-" + index));
+                    assertThat(event.getMetadata().getAttribute("kafka_topic"), equalTo(topic));
+                }
+                final Map<TopicPartition, OffsetAndMetadata> offsets = admin
+                        .listConsumerGroupOffsets(sourceConfig.getTopics().get(0).getGroupId())
+                        .partitionsToOffsetAndMetadata().get(10, TimeUnit.SECONDS);
+                assertThat(offsets.containsKey(new TopicPartition(topic, 0)), equalTo(true));
+                assertThat(offsets.get(new TopicPartition(topic, 0)).offset(), equalTo((long) NUMBER_OF_RECORDS));
+            });
+        } finally {
+            source.stop();
         }
-        producer.flush();
     }
 
+    private KafkaSourceConfig createSourceConfig(final String topic, final boolean useLatestSchema) {
+        final String bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
+        final String registryUrl = System.getProperty("tests.kafka.schema_registry_url");
+        assertThat("Set tests.kafka.bootstrap_servers", bootstrapServers, not(emptyOrNullString()));
+        assertThat("Set tests.kafka.schema_registry_url", registryUrl, not(emptyOrNullString()));
+        final Map<String, Object> schema = new HashMap<>();
+        schema.put("type", "confluent");
+        schema.put("registry_url", registryUrl);
+        if (!useLatestSchema) {
+            schema.put("version", 1);
+        }
+        final Map<String, Object> configuration = new HashMap<>();
+        configuration.put("bootstrap_servers", List.of(bootstrapServers));
+        configuration.put("schema", schema);
+        configuration.put("topics", List.of(Map.of(
+                "name", topic, "group_id", topic + "-group", "workers", 1,
+                "key_mode", "include_as_metadata", "auto_offset_reset", "earliest", "auto_commit", false,
+                "thread_waiting_time", "PT1S", "commit_interval", "PT1S")));
+
+        final String username = System.getProperty("tests.kafka.username", "");
+        final String password = System.getProperty("tests.kafka.password", "");
+        assertThat("Kafka username and password must be supplied together", username.isEmpty(), equalTo(password.isEmpty()));
+        configuration.put("encryption", Map.of("type", username.isEmpty() ? "none" : "ssl"));
+        if (!username.isEmpty()) {
+            configuration.put("authentication", Map.of("sasl", Map.of("plaintext", Map.of("username", username, "password", password))));
+        }
+        final String registryUserInfo = System.getProperty("tests.kafka.schema_registry_userinfo", "");
+        if (!registryUserInfo.isEmpty()) {
+            assertThat("Registry authentication requires Kafka SASL credentials", username, not(emptyOrNullString()));
+            final String[] credentials = registryUserInfo.split(":", 2);
+            assertThat("Registry credentials must be user:password", credentials.length, equalTo(2));
+            schema.put("basic_auth_credentials_source", "USER_INFO");
+            schema.put("api_key", credentials[0]);
+            schema.put("api_secret", credentials[1]);
+        }
+        return objectMapper.convertValue(configuration, KafkaSourceConfig.class);
+    }
 }

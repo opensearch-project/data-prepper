@@ -14,6 +14,16 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.Message;
+import com.google.protobuf.StringValue;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
+import io.confluent.kafka.serializers.subject.TopicNameStrategy;
 import io.micrometer.core.instrument.Counter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -25,6 +35,7 @@ import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
+import org.apache.kafka.connect.json.JsonDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -75,6 +87,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -90,6 +103,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -177,6 +191,7 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfBufferSizeOverflows()).thenReturn(overflowCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
+        when(topicMetrics.getNumberOfRecordsFailedToParse()).thenReturn(counter);
         when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
         when(topicMetrics.getNumberOfPollAuthErrors()).thenReturn(counter);
         lenient().when(topicMetrics.getNumberOfRebalances()).thenReturn(counter);
@@ -538,8 +553,9 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
-    public void testJsonConsumeRecords() throws InterruptedException, Exception {
+    public void consumeRecords_withJsonWithoutSchemaRegistry_preservesFieldsKeysAndOffsets() throws Exception {
         String topic = topicConfig.getName();
+        when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonRecords(topic);
@@ -575,6 +591,99 @@ public class KafkaCustomConsumerTest {
         }
 
         verify(topicMetrics).recordTimeBetweenPolls();
+    }
+
+    @Test
+    public void testConfluentFramedProtobufConsumeRecords() throws Exception {
+        final String topic = topicConfig.getName();
+        final MockSchemaRegistryClient schemaRegistryClient = new MockSchemaRegistryClient();
+        final Map<String, Object> serdeConfig = Map.of(
+                "schema.registry.url", "mock://protobuf-consumer-test",
+                AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY, TopicNameStrategy.class.getName());
+        final KafkaProtobufSerializer<Message> serializer = new KafkaProtobufSerializer<>(schemaRegistryClient);
+        final KafkaProtobufDeserializer<Message> deserializer = new KafkaProtobufDeserializer<>(schemaRegistryClient);
+        serializer.configure(serdeConfig, false);
+        deserializer.configure(serdeConfig, false);
+
+        final byte[] serializedMessage = serializer.serialize(topic, createProtobufMessage());
+        assertThat(serializedMessage[0], equalTo((byte) 0));
+        final Message deserializedMessage = deserializer.deserialize(topic, serializedMessage);
+        assertThat(schemaRegistryClient.getLatestSchemaMetadata(topic + "-value").getSchemaType(), equalTo("PROTOBUF"));
+        final ConsumerRecord<String, Message> protobufRecord =
+                new ConsumerRecord<>(topic, testPartition, 100L, testKey1, deserializedMessage);
+        consumerRecords = new ConsumerRecords<>(Map.of(
+                new TopicPartition(topic, testPartition),
+                List.of(protobufRecord)));
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+        consumer = createObjectUnderTest("PROTOBUF", false);
+
+        consumer.consumeRecords();
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        final Event event = bufferRecords.getKey().iterator().next().getData();
+        assertThat(event.get("orderId", String.class), equalTo("order-123"));
+        assertThat(event.get("itemCount", Integer.class), equalTo(3));
+        assertThat(event.get("active", Boolean.class), equalTo(true));
+        assertThat(event.get("tags", List.class), equalTo(List.of("priority", "fragile")));
+        assertThat(event.get("kafka_key", String.class), equalTo(testKey1));
+        assertThat(deserializedMessage, instanceOf(DynamicMessage.class));
+
+        serializer.close();
+        deserializer.close();
+    }
+
+    @Test
+    public void testProtobufScalarConsumeRecords() throws Exception {
+        final String topic = topicConfig.getName();
+        final ConsumerRecord<String, Message> protobufRecord =
+                new ConsumerRecord<>(topic, testPartition, 100L, null, StringValue.of("test-value"));
+        consumerRecords = new ConsumerRecords<>(Map.of(
+                new TopicPartition(topic, testPartition),
+                List.of(protobufRecord)));
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("PROTOBUF", false);
+
+        consumer.consumeRecords();
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        final Event event = bufferRecords.getKey().iterator().next().getData();
+        assertThat(event.get("message", String.class), equalTo("test-value"));
+        assertThat(consumer.getOffsetsToCommit().get(new TopicPartition(topic, testPartition)).offset(), equalTo(101L));
+    }
+
+    @Test
+    public void testProtobufConversionFailureKeepsRawPayloadAndProcessesRemainingRecords() throws Exception {
+        final String topic = topicConfig.getName();
+        final TopicPartition firstPartition = new TopicPartition(topic, 0);
+        final TopicPartition secondPartition = new TopicPartition(topic, 1);
+        final Counter recordsFailedToParseCounter = mock(Counter.class);
+        final Message invalidMessage = mock(Message.class);
+        when(invalidMessage.getDescriptorForType()).thenThrow(new IllegalStateException("invalid descriptor"));
+        when(invalidMessage.toByteArray()).thenReturn("raw".getBytes());
+        when(topicMetrics.getNumberOfRecordsFailedToParse()).thenReturn(recordsFailedToParseCounter);
+
+        final Map<TopicPartition, List<ConsumerRecord>> records = new LinkedHashMap<>();
+        records.put(firstPartition, List.of(
+                new ConsumerRecord<>(topic, 0, 100L, null, createProtobufMessage()),
+                new ConsumerRecord<>(topic, 0, 101L, null, invalidMessage),
+                new ConsumerRecord<>(topic, 0, 102L, null, createProtobufMessage())));
+        records.put(secondPartition, List.of(new ConsumerRecord<>(topic, 1, 200L, null, createProtobufMessage())));
+        consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("PROTOBUF", false);
+
+        consumer.consumeRecords();
+
+        verify(kafkaConsumer, never()).seek(any(TopicPartition.class), anyLong());
+        verify(recordsFailedToParseCounter).increment();
+        final List<Record<Event>> bufferedRecords = new ArrayList<>(buffer.read(100).getKey());
+        assertThat(bufferedRecords.size(), equalTo(4));
+        final Event failedEvent = bufferedRecords.get(1).getData();
+        assertThat(failedEvent.get("message", String.class), equalTo("cmF3"));
+        assertThat(failedEvent.getMetadata().getAttribute("kafka_partition"), equalTo("0"));
+        assertThat(consumer.getOffsetsToCommit().get(firstPartition).offset(), equalTo(103L));
+        assertThat(consumer.getOffsetsToCommit().get(secondPartition).offset(), equalTo(201L));
     }
 
     @Test
@@ -909,13 +1018,55 @@ public class KafkaCustomConsumerTest {
     }
 
 
-    private ConsumerRecords createJsonRecords(String topic) throws Exception {
-        final ObjectMapper mapper = new ObjectMapper();
-        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
-        ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1, mapper.convertValue(testMap1, JsonNode.class));
-        ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2, mapper.convertValue(testMap2, JsonNode.class));
-        records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
-        return new ConsumerRecords(records);
+    private ConsumerRecords<String, JsonNode> createJsonRecords(final String topic) {
+        try (final JsonDeserializer deserializer = new JsonDeserializer()) {
+            deserializer.configure(Map.of(), false);
+            final ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1,
+                    deserializer.deserialize(topic, testJsonValue1.getBytes(StandardCharsets.UTF_8)));
+            final ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2,
+                    deserializer.deserialize(topic, testJsonValue2.getBytes(StandardCharsets.UTF_8)));
+            return new ConsumerRecords<>(Map.of(new TopicPartition(topic, testJsonPartition), List.of(record1, record2)));
+        }
+    }
+
+    private DynamicMessage createProtobufMessage() throws Descriptors.DescriptorValidationException {
+        final DescriptorProtos.DescriptorProto messageDescriptor = DescriptorProtos.DescriptorProto.newBuilder()
+                .setName("OrderEvent")
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("order_id")
+                        .setNumber(1)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_STRING))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("item_count")
+                        .setNumber(2)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_INT32))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("active")
+                        .setNumber(3)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_BOOL))
+                .addField(DescriptorProtos.FieldDescriptorProto.newBuilder()
+                        .setName("tags")
+                        .setNumber(4)
+                        .setType(DescriptorProtos.FieldDescriptorProto.Type.TYPE_STRING)
+                        .setLabel(DescriptorProtos.FieldDescriptorProto.Label.LABEL_REPEATED))
+                .build();
+        final DescriptorProtos.FileDescriptorProto fileDescriptor = DescriptorProtos.FileDescriptorProto.newBuilder()
+                .setName("order_event.proto")
+                .setPackage("example.orders")
+                .setSyntax("proto3")
+                .addMessageType(messageDescriptor)
+                .build();
+        final Descriptors.Descriptor descriptor = Descriptors.FileDescriptor
+                .buildFrom(fileDescriptor, new Descriptors.FileDescriptor[0])
+                .findMessageTypeByName("OrderEvent");
+
+        return DynamicMessage.newBuilder(descriptor)
+                .setField(descriptor.findFieldByName("order_id"), "order-123")
+                .setField(descriptor.findFieldByName("item_count"), 3)
+                .setField(descriptor.findFieldByName("active"), true)
+                .addRepeatedField(descriptor.findFieldByName("tags"), "priority")
+                .addRepeatedField(descriptor.findFieldByName("tags"), "fragile")
+                .build();
     }
 
     @ParameterizedTest
@@ -1005,5 +1156,3 @@ public class KafkaCustomConsumerTest {
                 Arguments.of(new TimeoutException()));
     }
 }
-
-
