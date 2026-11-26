@@ -11,7 +11,9 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
@@ -65,7 +67,26 @@ public class KafkaCustomProducerFactory {
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
                                               final DLQSink dlqSink,
                                               final boolean topicNameInMetrics,
+                                              final SinkForwardRecordsContext sinkForwardRecordsContext,
+                                              final HeadlessPipeline failurePipeline) {
+        return createProducerInternal(kafkaProducerConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, topicNameInMetrics, CompressionOption.NONE, sinkForwardRecordsContext, failurePipeline);
+    }
+
+    public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
+                                              final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
+                                              final DLQSink dlqSink,
+                                              final boolean topicNameInMetrics,
                                               final CompressionOption manualCompressionConfig) {
+        return createProducerInternal(kafkaProducerConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, topicNameInMetrics, manualCompressionConfig, null, null);
+    }
+
+    private KafkaCustomProducer createProducerInternal(final KafkaProducerConfig kafkaProducerConfig,
+                                              final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
+                                              final DLQSink dlqSink,
+                                              final boolean topicNameInMetrics,
+                                              final CompressionOption manualCompressionConfig,
+                                              final SinkForwardRecordsContext sinkForwardRecordsContext,
+                                              final HeadlessPipeline failurePipeline) {
         AwsContext awsContext = new AwsContext(kafkaProducerConfig, awsCredentialsSupplier);
         KeyFactory keyFactory = new KeyFactory(awsContext);
         // If either or both of Producer's max_request_size or
@@ -95,7 +116,8 @@ public class KafkaCustomProducerFactory {
         final SchemaService schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
         return new KafkaCustomProducer(producer,
             kafkaProducerConfig, dlqSink,
-            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService, manualCompressionConfig);
+            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService, manualCompressionConfig,
+            sinkContext, sinkForwardRecordsContext, failurePipeline);
     }
 
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig, final Integer maxRequestSize) {

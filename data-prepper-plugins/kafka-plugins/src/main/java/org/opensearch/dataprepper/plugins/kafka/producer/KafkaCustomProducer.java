@@ -24,7 +24,10 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
@@ -40,6 +43,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
@@ -79,6 +83,12 @@ public class KafkaCustomProducer<T> {
 
     private final CompressionOption compressionConfig;
 
+    private final SinkContext sinkContext;
+
+    private final SinkForwardRecordsContext sinkForwardRecordsContext;
+
+    private final HeadlessPipeline failurePipeline;
+
     public KafkaCustomProducer(final KafkaProducer producer,
                                final KafkaProducerConfig kafkaProducerConfig,
                                final DLQSink dlqSink,
@@ -86,7 +96,10 @@ public class KafkaCustomProducer<T> {
                                final String tagTargetKey,
                                final KafkaTopicProducerMetrics topicMetrics,
                                final SchemaService schemaService,
-                               final CompressionOption compressionConfig
+                               final CompressionOption compressionConfig,
+                               final SinkContext sinkContext,
+                               final SinkForwardRecordsContext sinkForwardRecordsContext,
+                               final HeadlessPipeline failurePipeline
     ) {
         this.producer = producer;
         this.kafkaProducerConfig = kafkaProducerConfig;
@@ -100,6 +113,9 @@ public class KafkaCustomProducer<T> {
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(this.producer);
         this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE: compressionConfig;
+        this.sinkContext = sinkContext;
+        this.sinkForwardRecordsContext = sinkForwardRecordsContext;
+        this.failurePipeline = failurePipeline;
     }
 
     public KafkaCustomProducer(final KafkaProducer producer,
@@ -110,7 +126,7 @@ public class KafkaCustomProducer<T> {
                                final KafkaTopicProducerMetrics topicMetrics,
                                final SchemaService schemaService
     ) {
-        this(producer, kafkaProducerConfig, dlqSink, expressionEvaluator, tagTargetKey, topicMetrics, schemaService, null);
+        this(producer, kafkaProducerConfig, dlqSink, expressionEvaluator, tagTargetKey, topicMetrics, schemaService, null, null, null, null);
     }
 
     KafkaTopicProducerMetrics getTopicMetrics() {
@@ -162,7 +178,14 @@ public class KafkaCustomProducer<T> {
         } catch (Exception e) {
             LOG.error("Error occurred while publishing record {}", e.getMessage());
             topicMetrics.getNumberOfRecordSendErrors().increment();
-            if (dlqSink != null) {
+            if (failurePipeline != null) {
+                record.getData().updateFailureMetadata()
+                    .withPluginName("kafka")
+                    .withPipelineName(kafkaProducerConfig.getTopic() != null ? topicName : null)
+                    .withErrorMessage(e.getMessage())
+                    .with("topic", topicName);
+                failurePipeline.sendEvents(List.of(record));
+            } else if (dlqSink != null) {
                 JsonNode dataNode = record.getData().getJsonNode();
                 dlqSink.perform(dataNode, e);
             } else {
@@ -182,7 +205,7 @@ public class KafkaCustomProducer<T> {
         compressedOutputStream.write(bytes);
         compressedOutputStream.close();
 
-        send(topicName, key, byteArrayOutputStream.toByteArray());
+        send(topicName, key, byteArrayOutputStream.toByteArray(), record);
     }
 
     private Event getEvent(final Record<Event> record) {
@@ -197,7 +220,7 @@ public class KafkaCustomProducer<T> {
 
 
     private void publishPlaintextMessage(final Record<Event> record, final String key) throws Exception {
-        send(topicName, key, record.getData().toJsonString());
+        send(topicName, key, record.getData().toJsonString(), record);
     }
 
     private void publishAvroMessage(final Record<Event> record, final String key) throws Exception {
@@ -206,20 +229,24 @@ public class KafkaCustomProducer<T> {
             throw new RuntimeException("Schema definition is mandatory in case of type avro");
         }
         final GenericRecord genericRecord = getGenericRecord(record.getData(), avroSchema);
-        send(topicName, key, genericRecord);
+        send(topicName, key, genericRecord, record);
     }
 
-    Future send(final String topicName, String key, final Object record) throws Exception {
+    Future send(final String topicName, String key, final Object record, final Record<Event> originalRecord) throws Exception {
         ProducerRecord producerRecord = Objects.isNull(key) ?
             new ProducerRecord(topicName, record) :
             new ProducerRecord(topicName, key, record);
 
-        return producer.send(producerRecord, callBack(record));
+        return producer.send(producerRecord, callBack(originalRecord));
+    }
+
+    Future send(final String topicName, String key, final Object record) throws Exception {
+        return send(topicName, key, record, null);
     }
 
     private void publishJsonMessage(final Record<Event> record, final String key) throws IOException, ProcessingException, Exception {
         JsonNode dataNode = record.getData().getJsonNode();
-        send(topicName, key, dataNode);
+        send(topicName, key, dataNode, record);
     }
 
     public boolean validateSchema(final String jsonData, final String schemaJson) throws IOException, ProcessingException {
@@ -232,13 +259,30 @@ public class KafkaCustomProducer<T> {
         return report != null ? report.isSuccess() : false;
     }
 
-    private Callback callBack(final Object dataForDlq) {
+    private Callback callBack(final Record<Event> originalRecord) {
         return (metadata, exception) -> {
             if (null != exception) {
                 LOG.error("Error occurred while publishing {}", exception.getMessage());
                 topicMetrics.getNumberOfRecordProcessingErrors().increment();
+                if (failurePipeline != null && originalRecord != null) {
+                    originalRecord.getData().updateFailureMetadata()
+                        .withPluginName("kafka")
+                        .withPipelineName(kafkaProducerConfig.getTopic() != null ? topicName : null)
+                        .withErrorMessage(exception.getMessage())
+                        .with("topic", topicName);
+                    failurePipeline.sendEvents(List.of(originalRecord));
+                } else if (dlqSink != null && originalRecord != null) {
+                    dlqSink.perform(originalRecord.getData().getJsonNode(), exception);
+                } else {
+                    releaseEventHandles(false);
+                }
             } else {
-                releaseEventHandles(true);
+                if (sinkContext != null && sinkForwardRecordsContext != null && sinkContext.getForwardToPipelines().size() > 0) {
+                    sinkForwardRecordsContext.addRecord(originalRecord);
+                    sinkContext.forwardRecords(sinkForwardRecordsContext, null, null);
+                } else {
+                    releaseEventHandles(true);
+                }
             }
         };
     }
