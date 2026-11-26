@@ -82,6 +82,9 @@ task integrationTest(type: Test) {
     systemProperty 'tests.s3sink.bucket', System.getProperty('tests.s3sink.bucket')
     systemProperty 'tests.s3sink.region', System.getProperty('tests.s3sink.region')
     systemProperty 'tests.s3sink.kms_key', System.getProperty('tests.s3sink.kms_key')
+    systemProperty 'tests.s3sink.endpoint', System.getProperty('tests.s3sink.endpoint')
+    systemProperty 'tests.s3sink.force_path_style', System.getProperty('tests.s3sink.force_path_style')
+    systemProperty 'tests.s3sink.legacy_md5_checksum', System.getProperty('tests.s3sink.legacy_md5_checksum')
 
     filter {
         includeTestsMatching '*IT'
