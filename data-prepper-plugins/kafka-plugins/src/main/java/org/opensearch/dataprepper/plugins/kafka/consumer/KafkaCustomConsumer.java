@@ -36,6 +36,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.SourceCompleteness;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
@@ -60,7 +61,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.NavigableMap;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -109,6 +113,15 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
     private final boolean invokeCallbackOnExpiry;
+    // Completeness reporting. Nothing here is on the per-record path: one map write per polled
+    // partition batch, one lookup per commit.
+    private volatile SourceCompleteness sourceCompleteness;
+    // Per partition: offset of the last record in each polled batch -> that record's timestamp.
+    private final Map<TopicPartition, NavigableMap<Long, Long>> batchEndTimestamps;
+    // Per partition: number of polled batches whose acknowledgement set has not completed yet.
+    private final Map<TopicPartition, Integer> pendingAckBatches;
+    // Partitions currently marked caught-up. Cleared when new data is polled.
+    private final Set<TopicPartition> caughtUpPartitions;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -150,6 +163,17 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.exponentialBackoff = new ExponentialBackoff(INITIAL_BACKOFF.toMillis(), 2, MAX_BACKOFF.toMillis(), 0);
         this.authFailureAttempts = 0;
         this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
+        this.batchEndTimestamps = new HashMap<>();
+        this.pendingAckBatches = new HashMap<>();
+        this.caughtUpPartitions = ConcurrentHashMap.newKeySet();
+    }
+
+    /**
+     * Enables completeness reporting for this consumer. Optional; without it the consumer behaves
+     * exactly as before.
+     */
+    public void setSourceCompleteness(final SourceCompleteness sourceCompleteness) {
+        this.sourceCompleteness = sourceCompleteness;
     }
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
@@ -197,12 +221,104 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         synchronized (offsetsToCommit) {
             offsetsToCommit.put(partition, offsetAndMetadata);
         }
+        reportCompleteUpTo(partition, offsetAndMetadata.offset());
+    }
+
+    /**
+     * The commit position is the next offset to read. Everything below it has been delivered (or
+     * acknowledged, when acknowledgements are enabled), so the partition is complete up to the
+     * timestamp of the newest batch that ends at or below {@code commitPosition - 1}. Using the
+     * floor entry is conservative when the commit position falls inside a batch.
+     */
+    private void reportCompleteUpTo(final TopicPartition partition, final long commitPosition) {
+        final SourceCompleteness completeness = sourceCompleteness;
+        if (completeness == null) {
+            return;
+        }
+        final Long timestamp;
+        synchronized (batchEndTimestamps) {
+            final NavigableMap<Long, Long> timestamps = batchEndTimestamps.get(partition);
+            if (timestamps == null) {
+                return;
+            }
+            final Map.Entry<Long, Long> floor = timestamps.floorEntry(commitPosition - 1);
+            if (floor == null) {
+                return;
+            }
+            timestamp = floor.getValue();
+            timestamps.headMap(floor.getKey(), true).clear();
+        }
+        completeness.update(partition.toString(), Instant.ofEpochMilli(timestamp));
+    }
+
+    private void recordBatchEnd(final TopicPartition partition, final long lastOffset, final long lastTimestampMs) {
+        if (sourceCompleteness == null) {
+            return;
+        }
+        // New data polled: partition is no longer caught up
+        caughtUpPartitions.remove(partition);
+        synchronized (batchEndTimestamps) {
+            batchEndTimestamps.computeIfAbsent(partition, p -> new TreeMap<>()).put(lastOffset, lastTimestampMs);
+            if (acknowledgementsEnabled) {
+                pendingAckBatches.merge(partition, 1, Integer::sum);
+            }
+        }
+    }
+
+    private void batchesAcknowledged(final Map<TopicPartition, CommitOffsetRange> offsets) {
+        if (sourceCompleteness == null) {
+            return;
+        }
+        synchronized (batchEndTimestamps) {
+            offsets.keySet().forEach(partition -> {
+                // Skip partitions we no longer own (revoked before ack arrived)
+                if (ownedPartitionsEpoch.containsKey(partition)) {
+                    pendingAckBatches.merge(partition, -1, Integer::sum);
+                }
+            });
+        }
+    }
+
+    /**
+     * A partition is caught up when the client reports zero lag for it, nothing polled from it is
+     * still waiting for acknowledgement, and nothing for it is waiting to be committed.
+     */
+    @VisibleForTesting
+    void reportCaughtUpPartitions() {
+        final SourceCompleteness completeness = sourceCompleteness;
+        if (completeness == null) {
+            return;
+        }
+        final Set<TopicPartition> owned;
+        synchronized (this) {
+            owned = new HashSet<>(ownedPartitionsEpoch.keySet());
+        }
+        for (final TopicPartition partition : owned) {
+            final boolean zeroLag = topicMetrics.getPartitionLag(partition.partition()).map(lag -> lag == 0.0).orElse(false);
+            if (!zeroLag) {
+                continue;
+            }
+            final boolean pending;
+            synchronized (batchEndTimestamps) {
+                pending = pendingAckBatches.getOrDefault(partition, 0) > 0;
+            }
+            final boolean uncommitted;
+            synchronized (offsetsToCommit) {
+                uncommitted = offsetsToCommit.containsKey(partition);
+            }
+            if (!pending && !uncommitted) {
+                if (caughtUpPartitions.add(partition)) {
+                    completeness.markCaughtUp(partition.toString());
+                }
+            }
+        }
     }
 
     private AcknowledgementSet createAcknowledgementSet(Map<TopicPartition, CommitOffsetRange> offsets) {
         AcknowledgementSet acknowledgementSet =
                 acknowledgementSetManager.create((result) -> {
                     numberOfAcksPending.decrementAndGet();
+                    batchesAcknowledged(offsets);
                     if (result == true) {
                         topicMetrics.getNumberOfPositiveAcknowledgements().increment();
                         synchronized(this) {
@@ -442,6 +558,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 consumeRecords();
                 LOG.debug("Exited consume records");
                 topicMetrics.update(consumer);
+                reportCaughtUpPartitions();
                 LOG.debug("Updated consumer metrics");
                 retryingAfterException = false;
                 outerRetryAttempts = 0;
@@ -603,8 +720,12 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
             processRecords(acknowledgementSet, eventRecords);
 
-            long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
+            final ConsumerRecord<String, T> lastRecord = partitionRecords.get(partitionRecords.size() - 1);
+            long lastOffset = lastRecord.offset();
             long firstOffset = partitionRecords.get(0).offset();
+            // Cap timestamp at current time to avoid future timestamps breaking completeness
+            final long cappedTimestamp = Math.min(lastRecord.timestamp(), System.currentTimeMillis());
+            recordBatchEnd(topicPartition, lastOffset, cappedTimestamp);
             Range<Long> offsetRange = Range.between(firstOffset, lastOffset);
             offsets.put(topicPartition, new CommitOffsetRange(offsetRange, partitionEpoch));
 
@@ -660,10 +781,23 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 ownedPartitionsEpoch.remove(topicPartition);
                 partitionCommitTrackerMap.remove(topicPartition.partition());
                 topicMetrics.clearPartitionLag(topicPartition.partition());
+                releaseCompleteness(topicPartition);
             }
             if (paused) {
                 consumer.pause(consumer.assignment());
             }
+        }
+    }
+
+    private void releaseCompleteness(final TopicPartition topicPartition) {
+        final SourceCompleteness completeness = sourceCompleteness;
+        caughtUpPartitions.remove(topicPartition);
+        synchronized (batchEndTimestamps) {
+            batchEndTimestamps.remove(topicPartition);
+            pendingAckBatches.remove(topicPartition);
+        }
+        if (completeness != null) {
+            completeness.release(topicPartition.toString());
         }
     }
 

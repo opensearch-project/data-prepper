@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.source.SourceCompleteness;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -31,7 +32,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mockStatic;
 
 @ExtendWith(MockitoExtension.class)
@@ -282,5 +285,26 @@ class ComponentPluginArgumentsContextTest {
         }
         assertThat(arguments,
                 equalTo(new Object[] { pluginSetting, pluginMetrics }));
+    }
+
+    @Test
+    void createArguments_with_SourceCompleteness_creates_a_DefaultSourceCompleteness_on_the_plugin_metrics() {
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .build();
+
+        final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+
+        final Object[] arguments;
+        try(final MockedStatic<PluginMetrics> pluginMetricsMockedStatic = mockStatic(PluginMetrics.class)) {
+            pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting))
+                    .thenReturn(pluginMetrics);
+            arguments = objectUnderTest.createArguments(new Class[]{SourceCompleteness.class});
+        }
+        assertThat(arguments.length, equalTo(1));
+        assertThat(arguments[0], instanceOf(DefaultSourceCompleteness.class));
+        verify(pluginMetrics).gauge(eq(DefaultSourceCompleteness.COMPLETE_UP_TO), any(), any());
+        verify(pluginMetrics).gauge(eq(DefaultSourceCompleteness.FRESHNESS_LAG), any(), any());
+        verify(pluginMetrics).gauge(eq(DefaultSourceCompleteness.REPORTING_PARTITIONS), any(), any());
     }
 }

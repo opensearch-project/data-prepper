@@ -170,7 +170,7 @@ public class ConfluentKafkaProducerConsumerIT {
 
     public void consumeRecords(String servers) {
         kafkaSource = new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
-                null, pluginConfigObservable, awsCredentialsSupplier);
+                null, pluginConfigObservable, awsCredentialsSupplier, null);
         kafkaSource.start(buffer);
     }
 

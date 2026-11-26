@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.SourceCompleteness;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
@@ -98,6 +99,7 @@ public class KafkaSource implements Source<Record<Event>> {
     private final List<ExecutorService> allTopicExecutorServices;
     private final List<KafkaCustomConsumer> allTopicConsumers;
     private final PluginConfigObservable pluginConfigObservable;
+    private final SourceCompleteness sourceCompleteness;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
     @DataPrepperPluginConstructor
@@ -107,8 +109,10 @@ public class KafkaSource implements Source<Record<Event>> {
                        final PipelineDescription pipelineDescription,
                        final KafkaClusterConfigSupplier kafkaClusterConfigSupplier,
                        final PluginConfigObservable pluginConfigObservable,
-                       final AwsCredentialsSupplier awsCredentialsSupplier) {
+                       final AwsCredentialsSupplier awsCredentialsSupplier,
+                       final SourceCompleteness sourceCompleteness) {
         this.sourceConfig = sourceConfig;
+        this.sourceCompleteness = sourceCompleteness;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
@@ -173,6 +177,7 @@ public class KafkaSource implements Source<Record<Event>> {
                         consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
                                 acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause(),
                                 CompressionOption.NONE, sourceConfig.getAcknowledgementsExpiryResetEnabled());
+                        consumer.setSourceCompleteness(sourceCompleteness);
                         allTopicConsumers.add(consumer);
 
                         executorService.submit(consumer);

@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
@@ -258,6 +259,14 @@ public class KafkaTopicConsumerMetrics {
     // Zero (not remove) a revoked partition's lag: the gauge meter stays registered, only the value resets.
     public void clearPartitionLag(final int partition) {
         perPartitionLag.put(String.valueOf(partition), 0.0);
+    }
+
+    /**
+     * The most recent records lag the Kafka client reported for the partition, or empty if the
+     * client has not reported one yet.
+     */
+    public Optional<Double> getPartitionLag(final int partition) {
+        return Optional.ofNullable(perPartitionLag.get(String.valueOf(partition)));
     }
 
     public void recordTimeBetweenPolls() {
