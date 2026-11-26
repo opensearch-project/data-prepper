@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.FieldConflictStrategy;
+import org.opensearch.dataprepper.model.event.MergeSettings;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -32,6 +34,7 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
     private final FlattenProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
     private final Map<String, String> excludeKeysAndJsonPointers = new HashMap<>();
+    private final MergeSettings mergeSettings;
 
     @DataPrepperPluginConstructor
     public FlattenProcessor(final PluginMetrics pluginMetrics, final FlattenProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
@@ -49,6 +52,11 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                     String.format("flatten_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                             config.getFlattenWhen()));
         }
+
+        final FieldConflictStrategy targetConflictStrategy = config.getTargetConflictStrategy() != null
+                ? config.getTargetConflictStrategy()
+                : FieldConflictStrategy.OVERWRITE;
+        this.mergeSettings = new MergeSettings(targetConflictStrategy, false);
     }
 
     @Override
@@ -91,7 +99,7 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                     flattenedJson = removeListIndicesInKeys(flattenedJson);
                 }
 
-                updateEvent(recordEvent, flattenedJson);
+                recordEvent.mergeFields(config.getTarget(), flattenedJson, mergeSettings);
             } catch (Exception e) {
                 LOG.error(NOISY, "Fail to perform flatten operation", e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
@@ -155,17 +163,6 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
                 newValue.add(value);
                 map.put(key, newValue);
             }
-        }
-    }
-
-    private void updateEvent(Event recordEvent, Map<String, Object> flattenedJson) {
-        if (config.getTarget().isEmpty()) {
-            // Target is root
-            for (final Map.Entry<String, Object> entry : flattenedJson.entrySet()) {
-                recordEvent.put(entry.getKey(), entry.getValue());
-            }
-        } else {
-            recordEvent.put(config.getTarget(), flattenedJson);
         }
     }
 }

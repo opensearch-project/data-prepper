@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.event.FieldConflictStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,6 +95,15 @@ public class FlattenProcessorConfig {
     @Size(min = 1, max = 1, message = "flatten_separator must be exactly one character.")
     private String flattenSeparator = ".";
 
+    @JsonProperty("target_conflict_strategy")
+    @JsonPropertyDescription("Defines the conflict resolution strategy when the target field already exists. " +
+            "Options are <code>skip</code> (skip the write entirely when target is a named field; when target is the event root, merges and preserves existing fields), " +
+            "<code>overwrite</code> (replace the entire target; when target is the event root, overwrites conflicting fields), " +
+            "<code>merge_preserve_existing_keys</code> (merge per-field, keeping existing values on conflict), " +
+            "and <code>merge_overwrite_existing_keys</code> (merge per-field, overwriting existing values on conflict). " +
+            "Default is <code>overwrite</code>.")
+    private FieldConflictStrategy targetConflictStrategy = FieldConflictStrategy.OVERWRITE;
+
     public String getSource() {
         return source;
     }
@@ -128,6 +138,10 @@ public class FlattenProcessorConfig {
 
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
+    }
+
+    public FieldConflictStrategy getTargetConflictStrategy() {
+        return targetConflictStrategy;
     }
 
     @AssertTrue(message = "remove_brackets can not be true if remove_list_indices is false.")
