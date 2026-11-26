@@ -4,7 +4,6 @@ services:
     image: opensearchproject/data-prepper:2
     volumes:
       - ./pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
-      - ../data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
       - opensearch-config:/usr/share/opensearch-test/:ro
     ports:
       - "21890:21890"
@@ -13,45 +12,27 @@ services:
     depends_on:
       - opensearch
   otel-collector:
-    image: otel/opentelemetry-collector:0.64.1
-    command: [ "--config=/etc/otel-collector-config.yml" ]
-    working_dir: "/project"
+    image: otel/opentelemetry-collector-contrib:0.113.0
     volumes:
-      - ${PWD}/:/project
-      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
-    ports:
-      - "14250:14250"
+      - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yaml
+    networks:
+      - my_network
     depends_on:
       - data-prepper
-    networks:
-      - my_network
-  jaeger-agent:
-    image: jaegertracing/jaeger-agent:1.51.0
-    command: [ "--reporter.grpc.host-port=otel-collector:14250" ]
-    ports:
-      - "5775:5775/udp"
-      - "6831:6831/udp"
-      - "6832:6832/udp"
-      - "5778:5778/tcp"
-    networks:
-      - my_network
-    depends_on:
-      - otel-collector
   jaeger-hot-rod:
-    image: jaegertracing/example-hotrod:1.41.0
+    image: jaegertracing/example-hotrod:1.63.0
     command: [ "all" ]
     environment:
-      - JAEGER_AGENT_HOST=jaeger-agent
-      - JAEGER_AGENT_PORT=6831
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     ports:
-      - "8080-8083:8080-8083"
+      - "8080:8080"
     depends_on:
-      - jaeger-agent
+      - otel-collector
     networks:
       - my_network
   opensearch:
     container_name: node-0.example.com
-    image: opensearchproject/opensearch:2.16.0
+    image: opensearchproject/opensearch:2.18.0
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
@@ -72,7 +53,7 @@ services:
     networks:
       - my_network
   dashboards:
-    image: opensearchproject/opensearch-dashboards:2.16.0
+    image: opensearchproject/opensearch-dashboards:2.18.0
     container_name: opensearch-dashboards
     ports:
       - "5601:5601"
