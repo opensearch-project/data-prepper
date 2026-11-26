@@ -167,6 +167,7 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getSerdeFormat()).thenReturn(MessageFormat.JSON);
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(jsonTopic.getConnectionsMaxIdle()).thenReturn(null);
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         LOG.info("Using Kafka bootstrap servers: {}", bootstrapServers);
         when(sourceConfig.getBootstrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
