@@ -1,0 +1,6 @@
+id	name	email	age	city	active
+1	Alice	alice@example.com	30	New York	true
+2	Bob	bob@example.com	25	Los Angeles	false
+3	Charlie	charlie@example.com	35	Chicago	true
+4	Diana	diana@example.com	28	Houston	true
+5	Eve	eve@example.com	32	Phoenix	false

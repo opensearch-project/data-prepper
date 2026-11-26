@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+  <product id="1">
+    <name>Widget</name>
+    <price currency="USD">9.99</price>
+    <category>Tools</category>
+  </product>
+  <product id="2">
+    <name>Gadget</name>
+    <price currency="USD">24.99</price>
+    <category>Electronics</category>
+  </product>
+  <product id="3">
+    <name>Doohickey</name>
+    <price currency="USD">4.50</price>
+    <category>Misc</category>
+  </product>
+</catalog>
