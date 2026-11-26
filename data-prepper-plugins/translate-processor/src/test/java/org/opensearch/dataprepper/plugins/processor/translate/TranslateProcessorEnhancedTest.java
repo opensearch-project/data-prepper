@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Pattern;
+import org.opensearch.dataprepper.model.pattern.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -378,5 +378,22 @@ class TranslateProcessorEnhancedTest {
                 .withData(data)
                 .withEventType("event")
                 .build());
+    }
+    
+    @Test
+    void testTranslateProcessorWithRe2j() {
+        System.setProperty("dataprepper.pattern.provider", "re2j");
+        try {
+            when(mockConfig.getSource()).thenReturn("sourceField");
+            when(mockConfig.getTargets()).thenReturn(List.of());
+            TranslateProcessor processor = createObjectUnderTest();
+            
+            final Record<Event> record = getEvent("testValue");
+            final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+            
+            assertThat(editedRecords.size(), equalTo(1));
+        } finally {
+            System.clearProperty("dataprepper.pattern.provider");
+        }
     }
 }
