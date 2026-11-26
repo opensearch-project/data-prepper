@@ -38,6 +38,8 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.SaaSCrawlerException;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -101,6 +103,30 @@ public class WorkerSchedulerTest {
     private Counter renewalFailureCounter;
     @Mock
     private SaasSourcePartition mockSaasPartition;
+    @Mock
+    private Counter partitionAcquisitionCounter;
+    @Mock
+    private Counter partitionDelayCounter;
+    @Mock
+    private Counter partitionDelayPersistenceFailureCounter;
+    @Mock
+    private DistributionSummary partitionLagSummary;
+
+    @BeforeEach
+    void setUpDimensionMetrics() {
+        lenient().when(pluginMetrics.counterWithTags(
+                        "workerPartitionAcquisitions", "dimensionType", "detections"))
+                .thenReturn(partitionAcquisitionCounter);
+        lenient().when(pluginMetrics.counterWithTags(
+                        "workerPartitionDelays", "dimensionType", "detections"))
+                .thenReturn(partitionDelayCounter);
+        lenient().when(pluginMetrics.counterWithTags(
+                        "workerPartitionDelayPersistenceFailures", "dimensionType", "detections"))
+                .thenReturn(partitionDelayPersistenceFailureCounter);
+        lenient().when(pluginMetrics.summaryWithTags(
+                        "workerPartitionLagSeconds", "dimensionType", "detections"))
+                .thenReturn(partitionLagSummary);
+    }
 
     @Test
     void testUnableToAcquireLeaderPartition() throws InterruptedException {
@@ -476,6 +502,103 @@ public class WorkerSchedulerTest {
         DimensionalTimeSliceWorkerProgressState progressState = new DimensionalTimeSliceWorkerProgressState();
         progressState.setPartitionCreationTime(Instant.now());
         when(mockSaasPartition.getProgressState()).thenReturn(Optional.of(progressState));
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+                .willReturn(Optional.of(mockSaasPartition))
+                .willReturn(Optional.empty());
+
+        runWorkerSchedulerOnce();
+
+        verify(acknowledgementSet).cancel();
+        verify(coordinator, never()).saveProgressStateForPartition(any(), any());
+        verify(coordinator, never()).giveUpPartition(any());
+    }
+
+    @Test
+    void testRetryableCrawlerFailureWithExplicitDelayPersistsRetryDeadline() throws InterruptedException {
+        stubCounters();
+        final Duration retryDelay = Duration.ofHours(1);
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
+        when(acknowledgementSetManager.create(any(), eq(ACKNOWLEDGEMENT_SET_TIMEOUT))).thenReturn(acknowledgementSet);
+        doThrow(new SaaSCrawlerException("Gateway timeout", true, retryDelay))
+                .when(crawler).executePartition(any(), any(), any());
+
+        when(mockSaasPartition.getProgressState()).thenReturn(Optional.of(new PaginationCrawlerWorkerProgressState()));
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+                .willReturn(Optional.of(mockSaasPartition))
+                .willReturn(Optional.empty());
+
+        runWorkerSchedulerOnce();
+
+        final InOrder inOrder = inOrder(acknowledgementSet, coordinator);
+        inOrder.verify(acknowledgementSet).cancel();
+        inOrder.verify(coordinator).saveProgressStateForPartition(mockSaasPartition, retryDelay);
+        verify(coordinator, never()).giveUpPartition(any());
+    }
+
+    @Test
+    void testDimensionalRetryDelayRecordsAcquisitionLagAndDelayMetrics() throws InterruptedException {
+        stubCounters();
+        final Duration retryDelay = Duration.ofHours(1);
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
+        when(acknowledgementSetManager.create(any(), eq(ACKNOWLEDGEMENT_SET_TIMEOUT))).thenReturn(acknowledgementSet);
+        doThrow(new SaaSCrawlerException("Gateway timeout", true, retryDelay))
+                .when(crawler).executePartition(any(), any(), any());
+
+        final DimensionalTimeSliceWorkerProgressState progressState = new DimensionalTimeSliceWorkerProgressState();
+        progressState.setDimensionType("detections");
+        progressState.setStartTime(Instant.now().minus(Duration.ofHours(2)));
+        progressState.setEndTime(Instant.now().minus(Duration.ofHours(1)));
+        progressState.setPartitionCreationTime(Instant.now());
+        when(mockSaasPartition.getProgressState()).thenReturn(Optional.of(progressState));
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+                .willReturn(Optional.of(mockSaasPartition))
+                .willReturn(Optional.empty());
+
+        runWorkerSchedulerOnce();
+
+        verify(partitionAcquisitionCounter).increment();
+        verify(partitionLagSummary).record(org.mockito.ArgumentMatchers.doubleThat(value -> value >= 3_500));
+        verify(partitionDelayCounter).increment();
+        verify(partitionDelayPersistenceFailureCounter, never()).increment();
+    }
+
+    @Test
+    void testRetryDelayPersistenceFailureIsCounted() throws InterruptedException {
+        stubCounters();
+        final Duration retryDelay = Duration.ofHours(1);
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
+        when(acknowledgementSetManager.create(any(), eq(ACKNOWLEDGEMENT_SET_TIMEOUT))).thenReturn(acknowledgementSet);
+        doThrow(new SaaSCrawlerException("Gateway timeout", true, retryDelay))
+                .when(crawler).executePartition(any(), any(), any());
+        doThrow(new RuntimeException("coordination store unavailable"))
+                .when(coordinator).saveProgressStateForPartition(mockSaasPartition, retryDelay);
+
+        final DimensionalTimeSliceWorkerProgressState progressState = new DimensionalTimeSliceWorkerProgressState();
+        progressState.setDimensionType("detections");
+        progressState.setEndTime(Instant.now().minus(Duration.ofMinutes(10)));
+        when(mockSaasPartition.getProgressState()).thenReturn(Optional.of(progressState));
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
+                .willReturn(Optional.of(mockSaasPartition))
+                .willReturn(Optional.empty());
+
+        runWorkerSchedulerOnce();
+
+        verify(partitionDelayPersistenceFailureCounter).increment();
+        verify(partitionDelayCounter, never()).increment();
+        verify(coordinator, never()).giveUpPartition(any());
+    }
+
+    @Test
+    void testExplicitDelayDoesNotWritePartitionAfterRenewalFailure() throws InterruptedException {
+        stubCounters();
+        final Duration retryDelay = Duration.ofHours(1);
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
+        when(acknowledgementSetManager.create(any(), eq(ACKNOWLEDGEMENT_SET_TIMEOUT))).thenReturn(acknowledgementSet);
+        failRenewalOnFirstProgressCheck();
+        doThrow(new SaaSCrawlerException("Gateway timeout", true, retryDelay))
+                .when(crawler).executePartition(any(), any(), any());
+
+        when(mockSaasPartition.getProgressState()).thenReturn(Optional.of(new PaginationCrawlerWorkerProgressState()));
         given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE))
                 .willReturn(Optional.of(mockSaasPartition))
                 .willReturn(Optional.empty());
