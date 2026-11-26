@@ -230,7 +230,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     private void checkAndCreateIndexTemplate() throws IOException {
         final boolean isISMEnabled = checkISMEnabled();
         final Optional<String> policyIdOptional = isISMEnabled ?
-                ismPolicyManagementStrategy.checkAndCreatePolicy() :
+                ismPolicyManagementStrategy.checkAndCreatePolicy(configuredIndexAlias) :
                 Optional.empty();
         if (!openSearchSinkConfiguration.getIndexConfiguration().getIndexTemplate().isEmpty()) {
             // The index template can only be created once the component templates it is composed of exist.
@@ -275,8 +275,8 @@ public abstract class AbstractIndexManager implements IndexManager {
         templateStrategy.createTemplate(indexTemplate);
     }
 
-    final Optional<String> checkAndCreatePolicy() throws IOException {
-        return ismPolicyManagementStrategy.checkAndCreatePolicy();
+    final Optional<String> checkAndCreatePolicy(final String indexAlias) throws IOException {
+        return ismPolicyManagementStrategy.checkAndCreatePolicy(indexAlias);
     }
 
     public void checkAndCreateIndex() throws IOException {
@@ -346,6 +346,7 @@ public abstract class AbstractIndexManager implements IndexManager {
             indexTemplate.putCustomSetting(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
         }
         indexTemplate.putCustomSetting(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, rolloverAlias);
+	indexTemplate.putCustomSetting(IndexConstants.PLUGINS_ROLLOVER_ALIAS_SETTING, rolloverAlias);
     }
 
 }
