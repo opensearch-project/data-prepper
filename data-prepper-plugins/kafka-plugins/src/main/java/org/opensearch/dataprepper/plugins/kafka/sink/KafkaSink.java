@@ -143,7 +143,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         if (schemaConfig != null) {
             if (schemaConfig.isCreate()) {
                 final RestUtils restUtils = new RestUtils(schemaConfig);
-                final String topic = kafkaSinkConfig.getTopic().getName();
+                final String topic = kafkaSinkConfig.getTopic().getName() + "-value";
                 final SchemaService schemaService = new SchemaService.SchemaServiceBuilder()
                         .getRegisterationAndCompatibilityService(topic, kafkaSinkConfig.getSerdeFormat(),
                                 restUtils, schemaConfig).build();
