@@ -106,7 +106,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final ExponentialBackoff exponentialBackoff;
     private long authFailureAttempts;
-    private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
     private final CompressionOption compressionConfig;
     private final boolean invokeCallbackOnExpiry;
 
@@ -134,7 +133,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
-        this.partitionToLastReceivedTimestampMillis = new HashMap<>();
         this.ownedPartitionsEpoch = new HashMap<>();
         this.metricsUpdatedTime = Instant.now().getEpochSecond();
         this.acknowledgedOffsets = new ArrayList<>();
@@ -171,18 +169,11 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     <T> long getRecordTimeStamp(final ConsumerRecord<String, T> consumerRecord, final long nowMs) {
         final long timestamp = consumerRecord.timestamp();
-        int partition = consumerRecord.partition();
         if (timestamp > nowMs) {
             topicMetrics.getNumberOfInvalidTimeStamps().increment();
-            if (partitionToLastReceivedTimestampMillis.containsKey(partition)) {
-                return partitionToLastReceivedTimestampMillis.get(partition);
-            } else {
-                return nowMs;
-            }
-        } else {
-            partitionToLastReceivedTimestampMillis.put(partition, timestamp);
-            return timestamp;
+            return nowMs;
         }
+        return timestamp;
     }
 
     private long getCurrentTimeNanos() {
@@ -509,7 +500,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             eventMetadata.setAttribute("kafka_headers", headerData);
         }
         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, now.toEpochMilli());
-        eventMetadata.setAttribute("kafka_timestamp", receivedTimeStamp);
+        eventMetadata.setAttribute("kafka_timestamp", consumerRecord.timestamp());
         eventMetadata.setAttribute("kafka_timestamp_type", consumerRecord.timestampType().toString());
         eventMetadata.setAttribute("kafka_topic", topicName);
         eventMetadata.setAttribute("kafka_partition", String.valueOf(partition));
