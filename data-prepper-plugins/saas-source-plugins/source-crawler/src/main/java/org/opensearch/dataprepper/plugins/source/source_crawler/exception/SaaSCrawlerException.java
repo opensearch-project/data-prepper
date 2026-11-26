@@ -9,6 +9,9 @@
 
 package org.opensearch.dataprepper.plugins.source.source_crawler.exception;
 
+import java.time.Duration;
+import java.util.Optional;
+
 /**
  * Exception class for source plugin exceptions.
  * Two following criterias:
@@ -17,18 +20,37 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.exception;
  */
 public class SaaSCrawlerException extends RuntimeException {
     private final boolean retryable;
+    private final Duration retryDelay;
 
     public SaaSCrawlerException(String message, boolean retryable) {
-        super(message);
-        this.retryable = retryable;
+        this(message, null, retryable, null);
     }
 
     public SaaSCrawlerException(String message, Throwable cause, boolean retryable) {
+        this(message, cause, retryable, null);
+    }
+
+    public SaaSCrawlerException(String message, boolean retryable, Duration retryDelay) {
+        this(message, null, retryable, retryDelay);
+    }
+
+    public SaaSCrawlerException(String message, Throwable cause, boolean retryable, Duration retryDelay) {
         super(message, cause);
         this.retryable = retryable;
+        this.retryDelay = retryDelay;
     }
 
     public boolean isRetryable() {
         return retryable;
+    }
+
+    /**
+     * Returns a connector-selected delay before this partition is eligible for another acquisition.
+     * An empty value preserves the scheduler's existing retry behavior.
+     *
+     * @return the partition retry delay, when one was requested
+     */
+    public Optional<Duration> getRetryDelay() {
+        return Optional.ofNullable(retryDelay);
     }
 }

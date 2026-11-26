@@ -11,6 +11,8 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.exception;
 
 import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -75,6 +77,17 @@ public class SaaSCrawlerExceptionTest {
         assertEquals(errorMessage, exception.getMessage());
         assertEquals(cause, exception.getCause());
         assertFalse(exception.isRetryable());
+        assertTrue(exception.getRetryDelay().isEmpty());
+    }
+
+    @Test
+    void constructor_WithRetryDelay_ExposesDelay() {
+        final Duration retryDelay = Duration.ofHours(1);
+
+        final SaaSCrawlerException exception =
+                new SaaSCrawlerException("Transient error", new IllegalStateException("cause"), true, retryDelay);
+
+        assertEquals(retryDelay, exception.getRetryDelay().orElseThrow());
     }
 
 }

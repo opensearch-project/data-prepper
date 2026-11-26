@@ -48,6 +48,12 @@ public class WorkerScheduler implements Runnable {
     public static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
     public static final String PARTITION_OWNERSHIP_RENEWAL_FAILURES = "partitionOwnershipRenewalFailures";
     public static final String ACKNOWLEDGEMENT_CALLBACK_FAILURES = "acknowledgementCallbackFailures";
+    public static final String WORKER_PARTITION_ACQUISITIONS = "workerPartitionAcquisitions";
+    public static final String WORKER_PARTITION_DELAYS = "workerPartitionDelays";
+    public static final String WORKER_PARTITION_LAG_SECONDS = "workerPartitionLagSeconds";
+    public static final String WORKER_PARTITION_DELAY_PERSISTENCE_FAILURES =
+            "workerPartitionDelayPersistenceFailures";
+    private static final String DIMENSION_TYPE_TAG = "dimensionType";
 
     @VisibleForTesting
     static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
@@ -106,6 +112,7 @@ public class WorkerScheduler implements Runnable {
                 // Get the next available partition from the coordinator
                 partition = sourceCoordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE);
                 if (partition.isPresent()) {
+                    recordAcquisitionMetrics(partition.get());
                     // Process the partition (source extraction logic)
                     processPartition(partition.get(), buffer, renewalFailed);
                     parititionsCompletedCounter.increment();
@@ -125,8 +132,11 @@ public class WorkerScheduler implements Runnable {
                 boolean shouldLocalRetry = true;
                 if (e instanceof SaaSCrawlerException) {
                     SaaSCrawlerException saasException = (SaaSCrawlerException) e;
-                    if (!saasException.isRetryable()) {
-                        shouldLocalRetry = delayWorkerPartitionRetry(partition, e, renewalFailed);
+                    if (saasException.getRetryDelay().isPresent()) {
+                        shouldLocalRetry = delayWorkerPartitionRetry(
+                                partition, e, renewalFailed, saasException.getRetryDelay().get());
+                    } else if (!saasException.isRetryable()) {
+                        shouldLocalRetry = delayNonRetryableWorkerPartitionRetry(partition, e, renewalFailed);
                     }
                 }
                 if (shouldLocalRetry) {
@@ -151,14 +161,51 @@ public class WorkerScheduler implements Runnable {
     }
 
     /**
+     * Persists an explicit connector-requested delay before this partition can be acquired again.
+     *
+     * @param sourcePartition the partition to delay
+     * @param ex the connector exception requesting the delay
+     * @param renewalFailed set once an ownership renewal for this acquisition has failed
+     * @param retryDelay the duration before the partition becomes eligible again
+     * @return true when the scheduler should fall back to its local retry sleep
+     */
+    private boolean delayWorkerPartitionRetry(
+            final Optional<EnhancedSourcePartition> sourcePartition,
+            final Exception ex,
+            final AtomicBoolean renewalFailed,
+            final Duration retryDelay) {
+        log.error("[Delayed Retry Exception] Error processing worker partition. Will delay retry by {}", retryDelay, ex);
+        if (sourcePartition.isEmpty()) {
+            return true;
+        }
+
+        final EnhancedSourcePartition workerPartition = sourcePartition.get();
+        synchronized (workerPartition) {
+            if (renewalFailed.get()) {
+                log.debug("Not updating partition {}, its ownership renewal failed", workerPartition.getPartitionKey());
+                return false;
+            }
+            try {
+                sourceCoordinator.saveProgressStateForPartition(workerPartition, retryDelay);
+                recordPartitionMetric(workerPartition, WORKER_PARTITION_DELAYS);
+            } catch (final Exception persistenceException) {
+                recordPartitionMetric(workerPartition, WORKER_PARTITION_DELAY_PERSISTENCE_FAILURES);
+                log.error("Failed to persist retry delay for worker partition {}",
+                        workerPartition.getPartitionKey(), persistenceException);
+            }
+        }
+        return false;
+    }
+
+    /**
      * Delay retry on a workerPartition by X Duration (current default = 1 day) for all non-retryble exceptions up to X days (current default = 30 days)
      * @param sourcePartition - information on WorkerPartition state
      * @param ex - exception thrown by workerScheduler
      * @param renewalFailed - set once an ownership renewal for this acquisition has failed
      * @return boolean: true if we should fallback to localRetry
      */
-    private boolean delayWorkerPartitionRetry(Optional<EnhancedSourcePartition> sourcePartition, Exception ex,
-                                              final AtomicBoolean renewalFailed) {
+    private boolean delayNonRetryableWorkerPartitionRetry(
+            Optional<EnhancedSourcePartition> sourcePartition, Exception ex, final AtomicBoolean renewalFailed) {
         log.error("[Non-Retryable Exception] Error processing worker partition. Will delay retry with the configured duration", ex);
         try {
             SaasSourcePartition workerPartition = (SaasSourcePartition) sourcePartition.get();
@@ -206,6 +253,40 @@ public class WorkerScheduler implements Runnable {
             log.info("Partition {} is older than the configured max duration, giving up", workerPartition.getPartitionKey());
             sourceCoordinator.giveUpPartition(workerPartition);
         }
+    }
+
+    private void recordAcquisitionMetrics(final EnhancedSourcePartition partition) {
+        getDimensionalProgressState(partition).ifPresent(progressState -> {
+            final String dimensionType = progressState.getDimensionType();
+            log.info("Acquired worker partition {} for dimension {}", partition.getPartitionKey(), dimensionType);
+            pluginMetrics.counterWithTags(
+                    WORKER_PARTITION_ACQUISITIONS, DIMENSION_TYPE_TAG, dimensionType).increment();
+            if (progressState.getEndTime() != null) {
+                final long lagSeconds = Math.max(
+                        0L, Duration.between(progressState.getEndTime(), Instant.now()).getSeconds());
+                pluginMetrics.summaryWithTags(
+                        WORKER_PARTITION_LAG_SECONDS, DIMENSION_TYPE_TAG, dimensionType).record(lagSeconds);
+            }
+        });
+    }
+
+    private void recordPartitionMetric(final EnhancedSourcePartition partition, final String metricName) {
+        getDimensionalProgressState(partition).ifPresent(progressState -> pluginMetrics.counterWithTags(
+                metricName, DIMENSION_TYPE_TAG, progressState.getDimensionType()).increment());
+    }
+
+    private Optional<DimensionalTimeSliceWorkerProgressState> getDimensionalProgressState(
+            final EnhancedSourcePartition partition) {
+        final Optional<?> progressState = partition.getProgressState();
+        if (progressState.isEmpty()
+                || !(progressState.get() instanceof DimensionalTimeSliceWorkerProgressState)) {
+            return Optional.empty();
+        }
+        final DimensionalTimeSliceWorkerProgressState dimensionalState =
+                (DimensionalTimeSliceWorkerProgressState) progressState.get();
+        return dimensionalState.getDimensionType() == null
+                ? Optional.empty()
+                : Optional.of(dimensionalState);
     }
 
     private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer, final AtomicBoolean renewalFailed) {
